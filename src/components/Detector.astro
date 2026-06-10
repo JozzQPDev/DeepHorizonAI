@@ -108,8 +108,21 @@ const prefix = idPrefix;
     prefix: string = ""; // Cambiado de 'private' a 'public' (por defecto)
 
     connectedCallback() {
-      // Robusto: atributo directo puede variar según el build; probamos ambos
-      this.prefix = this.getAttribute('data-id-prefix') || this.getAttribute('data-prefix') || this.dataset.prefix || "";
+      // Robusto: si el atributo falla, deducimos el prefijo desde el contenedor del slot (slot-detector-X)
+      const attrPrefix =
+        this.getAttribute('data-id-prefix') ||
+        this.getAttribute('data-prefix') ||
+        this.dataset.prefix ||
+        "";
+
+      if (attrPrefix) {
+        this.prefix = attrPrefix;
+      } else {
+        const slotEl = this.closest('[id^="slot-detector-"]') as HTMLElement | null;
+        const slotNumber = slotEl?.id?.match(/\d+/)?.[0];
+        this.prefix = slotNumber ? `det${slotNumber}-` : '';
+      }
+
       this.init();
     }
 
