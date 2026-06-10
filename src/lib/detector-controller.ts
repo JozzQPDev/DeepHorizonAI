@@ -118,14 +118,18 @@ export class DetectorController {
   }
 
   public connectRemoteStream(stream: MediaStream) {
+    console.log(`[DetectorController ${this.idPrefix}] Recibiendo stream remoto: ${stream.id}`);
     this.stopSource();
     this.els.videoEl.srcObject = stream;
-    this.els.videoEl.play().catch(e => console.error(`[DetectorController ${this.idPrefix}] Error playing video:`, e)); // Explicitamente reproducir
+    this.els.videoEl.muted = true; // Imprescindible para autoplay en muchos navegadores
+    this.els.videoEl.playsInline = true;
+    
+    this.els.videoEl.play().catch(e => console.warn(`[DetectorController ${this.idPrefix}] Autoplay prevenido o error:`, e));
+
     this.isIpCam = false; // Un flujo WebRTC NO es una cámara IP (MJPEG)
     this.isCamera = true;
     this.startLoop();
     this.updateUI();
-    console.log(`[DetectorController ${this.idPrefix}] connectRemoteStream completed. Video srcObject set, isCamera=true, isIpCam=false.`);
   }
 
   private hideQR() {
@@ -159,7 +163,7 @@ export class DetectorController {
     
     let isReady = this.isIpCam 
       ? (ipImgEl.complete && ipImgEl.naturalWidth > 0)
-      : (videoEl.videoWidth > 0 && videoEl.readyState >= 2);
+      : (videoEl.videoWidth > 2 && videoEl.readyState >= 2); // Evitar el stub 2x2 de WebRTC
 
     const isPaused = this.isIpCam ? false : videoEl.paused;
     const isEnded = this.isIpCam ? false : videoEl.ended;
@@ -568,18 +572,17 @@ export class DetectorController {
 
     // Ocultamos el video si no tiene fuente activa o si estamos en modo IP (MJPEG)
     videoEl.classList.toggle('hidden', !hasSource || this.isIpCam);
-    console.log(`[DetectorController ${this.idPrefix}] videoEl hidden state after toggle: ${videoEl.classList.contains('hidden')}`);
     // Ocultamos el stream IP si no hay fuente o no estamos en modo IP
     ipImgEl.classList.toggle('hidden', !this.isIpCam || !hasSource);
-    console.log(`[DetectorController ${this.idPrefix}] ipImgEl hidden state after toggle: ${ipImgEl.classList.contains('hidden')}`);
     
     // Notificar si el modo cámara está activo para controles externos (como el botón Flip)
     window.dispatchEvent(new CustomEvent('ppe:toggleMode', { detail: this.isCamera }));
-    console.log(`[DetectorController ${this.idPrefix}] emptyState display: ${emptyState?.style.display}`);
 
     if (emptyState) {
       emptyState.style.display = hasSource ? 'none' : 'flex';
     }
+
+    console.log(`[DetectorController ${this.idPrefix}] UI Actualizada: hasSource=${hasSource}, videoHidden=${videoEl.classList.contains('hidden')}, emptyDisplay=${emptyState?.style.display}`);
   }
 
 

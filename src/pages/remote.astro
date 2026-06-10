@@ -108,7 +108,11 @@ import Layout from '../layouts/Layout.astro';
                     peerInstance = new Peer(); // ID aleatorio para el móvil
                     peerInstance.on('open', () => {
                         console.log("Llamando a:", peerMonitorId);
-                        peerInstance.call(peerMonitorId, stream);
+                        if (stream && stream.getVideoTracks().length > 0) {
+                            peerInstance.call(peerMonitorId, stream);
+                        } else {
+                            console.error("No hay tracks de video activos para enviar");
+                        }
                     });
                     peerInstance.on('error', (err: any) => console.error("Error en PeerJS móvil:", err));
                 }
