@@ -1,0 +1,149 @@
+---
+// src/pages/remote.astro
+// Página para capturar la cámara del móvil y vincularla al monitor
+---
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Horizon - Control Remoto</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { 
+            background: #0a0c0e; 
+            color: #e2e8f0; 
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; 
+            touch-action: manipulation;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-6 overflow-hidden">
+    
+    <div id="setup-view" class="w-full max-w-md text-center space-y-8 animate-in fade-in zoom-in duration-500">
+        <div class="relative inline-block">
+            <div class="absolute inset-0 bg-blue-500 blur-2xl opacity-20"></div>
+            <div class="relative w-24 h-24 bg-blue-500/10 border border-blue-500/30 rounded-3xl flex items-center justify-center mx-auto">
+                <i class="fa-solid fa-mobile-screen-button text-4xl text-blue-400"></i>
+            </div>
+        </div>
+        
+        <div>
+            <h1 class="text-2xl font-black uppercase tracking-widest mb-2">Vincular Cámara</h1>
+            <p class="text-xs text-gray-500 leading-relaxed">
+                Vas a compartir la cámara de este dispositivo con el monitor <br>
+                <span id="monitor-id" class="text-blue-400 font-bold px-2 py-0.5 bg-blue-500/10 rounded mt-2 inline-block">...</span>
+            </p>
+        </div>
+
+        <button id="start-btn" class="w-full py-5 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-xs tracking-[0.2em] transition-all active:scale-95 shadow-2xl shadow-blue-900/40">
+            ACTIVAR CÁMARA
+        </button>
+        
+        <p class="text-[10px] text-gray-600 uppercase tracking-widest">Deep Horizon AI Safety Monitor</p>
+    </div>
+
+    <div id="camera-view" class="hidden fixed inset-0 bg-black flex flex-col">
+        <video id="preview" autoplay playsinline muted class="w-full h-full object-cover"></video>
+        <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/60"></div>
+        
+        <div class="absolute top-10 left-6">
+            <div class="flex items-center gap-3">
+                <div class="w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(239,68,68,1)]"></div>
+                <span class="text-[10px] font-black text-white uppercase tracking-[0.3em]">Transmitiendo</span>
+            </div>
+        </div>
+
+        <div class="absolute bottom-12 left-0 right-0 px-8 flex flex-col items-center">
+            <p class="text-[10px] text-gray-400 uppercase tracking-widest mb-6">Vinculado a: <span class="id-display text-white font-bold"></span></p>
+            <button id="stop-btn" class="w-full max-w-xs py-4 bg-white/5 hover:bg-white/10 text-white rounded-2xl font-bold text-[10px] tracking-widest border border-white/10 backdrop-blur-md transition-all">
+                FINALIZAR SESIÓN
+            </button>
+            <button id="flip-camera-btn" class="mt-4 w-full max-w-xs py-4 bg-white/5 hover:bg-white/10 text-white rounded-2xl font-bold text-[10px] tracking-widest border border-white/10 backdrop-blur-md transition-all">
+                FINALIZAR SESIÓN
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const monitorId = urlParams.get('id');
+        
+        const setupView = document.getElementById('setup-view') as HTMLElement;
+        const cameraView = document.getElementById('camera-view') as HTMLElement;
+        const startBtn = document.getElementById('start-btn') as HTMLButtonElement;
+        const stopBtn = document.getElementById('stop-btn') as HTMLButtonElement;
+        const flipCameraBtn = document.getElementById('flip-camera-btn') as HTMLButtonElement;
+        const preview = document.getElementById('preview') as HTMLVideoElement;
+        const idDisplays = document.querySelectorAll('.id-display, #monitor-id');
+
+        // Mostrar el ID del monitor en la UI (asegurando que los elementos existan)
+        idDisplays.forEach(el => el.textContent = monitorId || 'Monitor');
+
+        let stream: MediaStream | null = null;
+        let currentFacingMode: 'user' | 'environment' = 'environment'; // Iniciar con la cámara trasera por defecto
+        // Canal de comunicación local (útil para pruebas en el mismo navegador)
+        const bc = new BroadcastChannel('ppe_remote_link');
+
+        startBtn.onclick = async () => {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: currentFacingMode, width: { ideal: 1280 } },
+                    audio: false 
+                });
+                
+                if (preview) preview.srcObject = stream;
+                if (setupView) setupView.classList.add('hidden');
+                if (cameraView) cameraView.classList.remove('hidden');
+
+                console.log("Cámara activa para monitor:", monitorId);
+                
+                // NOTA: Para conectar dispositivos en diferentes redes necesitas un servidor (WebRTC/WebSockets).
+                // Por ahora, enviamos la señal de conexión simulada.
+                bc.postMessage({
+                    type: 'remoteConnected',
+                    idPrefix: monitorId,
+                    streamUrl: '' // Aquí iría la URL del stream si usaras un relay
+                });
+                
+            } catch (err) {
+                alert("Error: No se pudo acceder a la cámara. Por favor permite el acceso en los ajustes de tu navegador.");
+                console.error(err);
+            }
+        };
+
+        if (stopBtn) stopBtn.onclick = () => {
+            if (stream) stream.getTracks().forEach((t: MediaStreamTrack) => t.stop());
+            window.location.reload();
+        };
+
+        if (flipCameraBtn) flipCameraBtn.onclick = async () => {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop()); // Detener el stream actual
+            }
+
+            currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+            
+            flipCameraBtn.textContent = currentFacingMode === 'environment' ? 'USAR CÁMARA FRONTAL' : 'USAR CÁMARA TRASERA';
+
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: currentFacingMode, width: { ideal: 1280 } },
+                    audio: false
+                });
+
+                if (preview) preview.srcObject = stream;
+                console.log("Cámara cambiada a:", currentFacingMode);
+
+            } catch (err) {
+                alert("Error al cambiar de cámara. Asegúrate de que el dispositivo tenga múltiples cámaras y que los permisos sean correctos.");
+                console.error("Error al cambiar de cámara:", err);
+                // Revertir el facingMode si falla la selección de cámara
+                currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment'; 
+                flipCameraBtn.textContent = currentFacingMode === 'environment' ? 'USAR CÁMARA FRONTAL' : 'USAR CÁMARA TRASERA';
+            }
+        };
+    </script>
+</body>
+</html>
