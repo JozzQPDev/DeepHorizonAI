@@ -120,7 +120,8 @@ const prefix = idPrefix;
       } else {
         const slotEl = this.closest('[id^="slot-detector-"]') as HTMLElement | null;
         const slotNumber = slotEl?.id?.match(/\d+/)?.[0];
-        this.prefix = slotNumber ? `det${slotNumber}-` : '';
+        // Fallback: Si no hay prop ni slot, generamos un ID único para este monitor
+        this.prefix = slotNumber ? `det${slotNumber}-` : `det-${Math.random().toString(36).substring(7)}-`;
       }
 
       this.init();

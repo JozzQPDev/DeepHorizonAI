@@ -71,53 +71,44 @@ export class DetectorController {
    * Inicializa la conexión PeerJS para recibir video del móvil
    */
   private initPeer() {
-    // Esperar a que la librería esté disponible en el window
     const Peer = (window as any).Peer;
     if (!Peer) {
       setTimeout(() => this.initPeer(), 1000);
       return;
     }
 
-    // Normalizar para que coincida con el móvil/QR:
-    // móvil llama a `ppe-monitor-<número>` (ej: ppe-monitor-1)
-    const slotNumber = (this.idPrefix.match(/\d+/)?.[0]) || this.idPrefix;
-    const peerId = `ppe-monitor-${slotNumber}`;
+    if (this.peer) return; // Evitar doble inicialización
 
-    console.log("[DetectorController] initPeer", {
-      idPrefix: this.idPrefix,
-      slotNumber,
-      peerId
+    // Normalización: Si el prefijo es 'det1-', el ID es 'ppe-monitor-1'
+    // Si no tiene números, usamos el prefijo limpio.
+    const idClean = (this.idPrefix.match(/\d+/)?.[0]) || this.idPrefix.replace(/[^a-zA-Z0-9]/g, '');
+    
+    if (!idClean) {
+      console.warn("[DetectorController] idPrefix vacío. Generando ID temporal para evitar colisión.");
+    }
+    
+    const peerId = `ppe-monitor-${idClean || Math.random().toString(36).substring(7)}`;
+
+    console.log("[DetectorController] Iniciando PeerJS:", peerId);
+
+    this.peer = new Peer(peerId);
+
+    this.peer.on('call', (call: any) => {
+      console.log("[DetectorController] Recibiendo llamada remota en:", peerId);
+      call.answer();
+
+      call.on('stream', (remoteStream: MediaStream) => {
+        console.log("[DetectorController] Stream remoto conectado con éxito");
+        this.hideQR();
+        this.connectRemoteStream(remoteStream);
+      });
     });
 
-    // Singleton PeerJS por peerId (evita que múltiples slots creen el mismo peer y pierdan listeners)
-    const w = window as any;
-    w.__ppe_peers_by_id = w.__ppe_peers_by_id || {};
-    w.__ppe_peer_listeners_by_id = w.__ppe_peer_listeners_by_id || {};
-
-    this.peer = w.__ppe_peers_by_id[peerId] || new Peer(peerId);
-    w.__ppe_peers_by_id[peerId] = this.peer;
-
-    if (!w.__ppe_peer_listeners_by_id[peerId]) {
-      w.__ppe_peer_listeners_by_id[peerId] = true;
-
-      this.peer.on('open', (id: string) => {
-        console.log("[DetectorController] Peer open", { peerIdExpected: peerId, peerIdActual: id });
-      });
-
-      this.peer.on('call', (call: any) => {
-        console.log("[DetectorController] Recibiendo llamada de cámara remota...", { peerId: this.peer?.id });
-
-        call.answer();
-
-        call.on('stream', (remoteStream: MediaStream) => {
-          console.log("[DetectorController] Stream remoto recibido", { peerId: this.peer?.id });
-          // IMPORTANTÍSIMO: conectamos el stream en el detector que tiene este idPrefix.
-          // Como los listeners son singleton, usamos el controlador actual (this) para conectar.
-          this.hideQR();
-          this.connectRemoteStream(remoteStream);
-        });
-      });
-    }
+    this.peer.on('error', (err: any) => {
+      if (err.type === 'unavailable-id') {
+        console.error("[DetectorController] El ID de Peer ya está en uso. Reintenta o refresca.");
+      }
+    });
   }
 
   public connectRemoteStream(stream: MediaStream) {
@@ -381,6 +372,10 @@ export class DetectorController {
   public dispose() {
     this.disposed = true;
     this.stopSource();
+    if (this.peer) {
+      this.peer.destroy();
+      this.peer = null;
+    }
     this.renderLocalViolations([]);
   }
 

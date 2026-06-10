@@ -4,7 +4,7 @@
 import Layout from '../layouts/Layout.astro';
 ---
 <Layout>    
-<body class="min-h-screen flex flex-col items-center justify-center p-6 overflow-hidden">
+    <div class="min-h-screen flex flex-col items-center justify-center p-6 overflow-hidden bg-[#0a0c0e]">
     <!-- Carga de PeerJS para enviar video -->
     <script is:inline src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     
@@ -59,7 +59,7 @@ import Layout from '../layouts/Layout.astro';
             </button>
         </div>
     </div>
-</Layout>
+
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const monitorId = urlParams.get('id');
@@ -67,8 +67,8 @@ import Layout from '../layouts/Layout.astro';
         // Normalización robusta:
         // - QR puede enviar idPrefix tipo "det1-" o "det2-"
         // - El monitor PeerJS debería escuchar "ppe-monitor-<número>"
-        const slotNumber = monitorId?.toString().match(/\d+/)?.[0] || monitorId || '';
-        const peerMonitorId = `ppe-monitor-${slotNumber}`;
+        const idClean = monitorId?.toString().match(/\d+/)?.[0] || monitorId?.toString().replace(/[^a-zA-Z0-9]/g, '') || '';
+        const peerMonitorId = `ppe-monitor-${idClean}`;
         
         const setupView = document.getElementById('setup-view') as HTMLElement;
         const cameraView = document.getElementById('camera-view') as HTMLElement;
@@ -104,9 +104,10 @@ import Layout from '../layouts/Layout.astro';
                 if (Peer && monitorId) {
                     const peer = new Peer(); // ID aleatorio para el móvil
                     peer.on('open', () => {
-                        console.log("Peer móvil listo, llamando a:", peerMonitorId, " (monitorId:", monitorId, ")");
+                        console.log("Llamando a:", peerMonitorId);
                         peer.call(peerMonitorId, stream);
                     });
+                    peer.on('error', (err) => alert("Error de conexión: " + err.type));
                 }
                 
             } catch (err) {
@@ -139,5 +140,5 @@ import Layout from '../layouts/Layout.astro';
             }
         };
     </script>
-</body>
-
+    </div>
+</Layout>
