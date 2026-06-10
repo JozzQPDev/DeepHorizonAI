@@ -1,0 +1,349 @@
+---
+import "@fortawesome/fontawesome-free/css/all.min.css";
+---
+
+<!-- Fondo oscuro para enfoque en móvil -->
+<div id="sidebar-backdrop" class="fixed inset-0 bg-black/60 z-150 hidden lg:hidden transition-opacity duration-300 opacity-0 pointer-events-none backdrop-blur-sm"></div>
+
+<aside 
+  id="mobile-sidebar"
+  class="fixed lg:static top-0 left-0 w-[85vw] max-w-85 lg:w-85 
+  h-full bg-[#0a0c10] lg:bg-[#0d1117] lg:border-r border-white/5 overflow-y-auto flex flex-col
+  z-200 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 
+  ease-out p-4 lg:p-0 shadow-2xl lg:shadow-none scrollbar-hide touch-pan-x"
+>
+
+  <!-- Cabecera del Drawer Móvil -->
+<div class="sticky top-0 z-50 flex items-center justify-between mb-6 lg:hidden px-4 py-3 bg-[#0f1115]/80 backdrop-blur-md rounded-2xl border border-white/5 shadow-inner shrink-0">
+    
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 flex items-center justify-center">
+        <img src="/ppe-icon.png" alt="PPE Icon" class="w-full h-6 object-contain">
+      </div>
+
+      <div>
+        <h2 class="text-[11px] font-black uppercase tracking-[0.2em] text-white/90">
+          Panel de Control
+        </h2>
+        <p class="text-[10px] text-slate-500 font-medium">
+          Sistema de monitoreo Deep Horizon
+        </p>
+      </div>
+    </div>
+
+    <button id="btn-close-sidebar" class="p-2 w-8 h-8 flex items-center justify-center bg-white/5 rounded-full text-gray-400 hover:text-white transition-colors">
+      <i class="fa-solid fa-xmark text-base leading-none"></i>
+    </button>
+</div>
+
+  <div class="flex-1 flex flex-col gap-4 lg:gap-0 min-h-0">
+
+  <!-- Header Profesional -->
+  <header class="hidden lg:flex sticky top-0 z-20 items-center gap-3 px-6 py-5 border-b border-white/5 bg-[#0d1117]/80 backdrop-blur-xl">
+    <div class="flex items-center justify-center w-auto h-auto">
+      <img src="/ppe-icon.png" alt="PPE Icon" class="w-full h-6 object-contain">
+    </div>
+
+    <div>
+      <h2 class="text-[11px] font-black uppercase tracking-[0.2em] text-white/90">
+        Panel de Control
+      </h2>
+      <p class="text-[10px] text-slate-500 font-medium">
+        Sistema de monitoreo Deep Horizon
+      </p>
+    </div>
+  </header>
+
+  <!-- 1. SECCIÓN: ESTADO DEL MODELO -->
+  <section class="bg-white/[0.02] lg:bg-transparent rounded-2xl lg:rounded-none border lg:border-0 border-white/5 lg:border-b transition-colors hover:bg-white/[0.03]">
+    <div class="collapsible-header flex items-center gap-3 p-5 lg:p-4 cursor-pointer group" data-target="section-model">
+      <i class="fa-solid fa-layer-group w-3.5 h-3.5 text-blue-500 text-sm"></i>
+      <h3 class="text-[10px] uppercase text-gray-400 font-bold font-mono tracking-widest group-hover:text-white transition-colors">Motor de IA</h3>
+      <i class="chevron fa-solid fa-chevron-down w-2.5 h-2.5 text-gray-600 transition-transform ml-auto text-[10px] group-hover:text-white/50"></i>
+    </div>
+    <div id="section-model" class="px-4 pb-4 p-4 lg:pb-4">
+      <div class="grid grid-cols-2 gap-3 text-[10px] font-mono mb-4">
+        <div class="p-2.5 bg-white/[0.03] border border-white/5 rounded-xl">
+          <span class="text-gray-600 block text-[7px] mb-1 uppercase font-black">Dispositivo</span>
+          <span id="m-device" class="text-blue-400 font-bold truncate">…</span>
+        </div>
+        <div class="p-2.5 bg-white/[0.03] border border-white/5 rounded-xl">
+          <span class="text-gray-600 block text-[7px] mb-1 uppercase font-black">Clases</span>
+          <span id="m-classes" class="text-blue-400 font-bold">…</span>
+        </div>
+      </div>
+      <div id="m-pills" class="flex flex-wrap gap-1.5 opacity-80"></div>
+    </div>
+  </section>
+
+  <!-- 2. SECCIÓN: ESTADÍSTICAS -->
+  <section class="bg-white/[0.02] lg:bg-transparent rounded-2xl lg:rounded-none border lg:border-0 border-white/5 lg:border-b transition-colors hover:bg-white/[0.03]">
+    <div class="collapsible-header flex items-center gap-3 p-5 lg:p-4 cursor-pointer group" data-target="section-live">
+      <i class="fa-solid fa-chart-simple w-3.5 h-3.5 text-green-500 text-sm"></i>
+      <h3 class="text-[10px] uppercase text-gray-400 font-bold font-mono tracking-widest group-hover:text-white transition-colors">Monitor</h3>
+      <i class="chevron fa-solid fa-chevron-down w-2.5 h-2.5 text-gray-600 transition-transform ml-auto text-[10px] group-hover:text-white/50"></i>
+    </div>
+    <div id="section-live" class="px-4 pb-4 p-4 lg:pb-4">
+      <div class="grid grid-cols-3 gap-3">
+        <div class="bg-white/[0.03] p-4 rounded-2xl border border-white/5 text-center transition-all hover:border-white/10">
+          <div id="s-total" class="text-xl font-black font-mono">0</div>
+          <div class="text-[8px] text-gray-600 font-bold uppercase tracking-widest mt-1">Total</div>
+        </div>
+        <div class="bg-white/[0.03] p-4 rounded-2xl border border-white/5 text-center transition-all hover:border-white/10 group/stat">
+          <div id="s-safe" class="text-xl font-black font-mono text-green-400">0</div>
+          <div class="text-[8px] text-gray-600 font-bold uppercase tracking-widest mt-1 group-hover/stat:text-green-500/50">OK</div>
+        </div>
+        <div class="bg-white/[0.03] p-4 rounded-2xl border border-white/5 text-center transition-all hover:border-white/10 group/stat">
+          <div id="s-warn" class="text-xl font-black font-mono text-red-400">0</div>
+          <div class="text-[8px] text-gray-600 font-bold uppercase tracking-widest mt-1 group-hover/stat:text-red-500/50">Viol.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+   <!-- 3. SECCIÓN: CONFIGURACIÓN DE IA -->
+  <section class="bg-white/[0.02] lg:bg-transparent rounded-2xl lg:rounded-none border lg:border-0 border-white/5 lg:border-b transition-colors hover:bg-white/[0.03]">
+    <div class="collapsible-header flex items-center gap-3 p-5 lg:p-4 cursor-pointer group" data-target="section-params">
+      <i class="fa-solid fa-gear w-3.5 h-3.5 text-purple-500 text-sm"></i>
+      <h3 class="text-[10px] uppercase text-gray-400 font-bold font-mono tracking-widest group-hover:text-white transition-colors">Parámetros</h3>
+      <button id="btn-reset-params" class="text-[9px] text-gray-600 hover:text-red-400 transition-colors uppercase font-bold font-mono relative z-10 ml-auto">
+        Resetear
+      </button>
+      <i class="chevron fa-solid fa-chevron-down w-2.5 h-2.5 text-gray-600 transition-transform text-[10px] group-hover:text-white/50"></i>
+    </div>
+    <div id="section-params" class="px-4 pb-4 p-4 space-y-4">
+      <div>
+        <div class="flex justify-between text-[9px] mb-3 font-mono uppercase tracking-tighter font-bold">
+          <span class="text-gray-500">Confianza IA</span>
+          <span id="conf-val" class="text-purple-400 font-bold">0.25</span>
+        </div>
+        <input type="range" id="conf-slider" min="0.01" max="1.0" step="0.01" value="0.25" class="w-full h-1.5 bg-white/5 rounded-full appearance-none cursor-pointer accent-purple-500 hover:accent-purple-400 transition-all" />
+      </div>
+      <div>
+        <div class="flex justify-between text-[9px] mb-3 font-mono uppercase tracking-tighter font-bold">
+          <span class="text-gray-500">Solapamiento (IOU)</span>
+          <span id="iou-val" class="text-purple-400 font-bold">0.45</span>
+        </div>
+        <input type="range" id="iou-slider" min="0.01" max="1.0" step="0.01" value="0.45" class="w-full h-1.5 bg-white/5 rounded-full appearance-none cursor-pointer accent-purple-500 hover:accent-purple-400 transition-all" />
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. SECCIÓN: FILTROS -->
+  <section class="bg-white/[0.02] lg:bg-transparent rounded-2xl lg:rounded-none border lg:border-0 border-white/5 lg:border-b transition-colors hover:bg-white/[0.03]">
+    <div class="collapsible-header flex items-center justify-between p-5 lg:p-4 cursor-pointer group active:bg-white/10" data-target="section-filters">
+      <div class="flex items-center gap-3">
+        <i class="fa-solid fa-filter w-3.5 h-3.5 text-orange-500 text-sm"></i>
+        <i class="chevron fa-solid fa-chevron-down w-2.5 h-2.5 text-gray-600 transition-transform text-[10px]"></i>
+        <h3 class="text-[10px] uppercase text-gray-400 font-bold font-mono tracking-widest group-hover:text-white transition-colors">Filtros de Detección</h3>
+      </div>
+      <button id="btn-toggle-filters" class="text-[9px] text-blue-500 hover:text-blue-400 font-bold font-mono uppercase opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
+        Todos
+      </button>
+    </div>
+    <div id="section-filters" class="px-4 pb-4 p-4 lg:pb-4">
+      <div id="filter-list" class="grid grid-cols-2 gap-x-2 gap-y-1.5">
+        <span class="text-[10px] text-gray-600 italic col-span-2 text-center py-2">Cargando clases...</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. SECCIÓN: CONFIGURACIÓN -->
+  <section class="bg-white/[0.02] lg:bg-transparent rounded-2xl lg:rounded-none border lg:border-0 border-white/5 lg:border-b transition-colors hover:bg-white/[0.03]">
+    <div class="collapsible-header flex items-center gap-3 p-5 lg:p-4 cursor-pointer group" data-target="section-reports">
+      <i class="fa-solid fa-sliders w-3.5 h-3.5 text-green-400 text-sm"></i>
+      <h3 class="text-[10px] uppercase text-gray-400 font-bold font-mono tracking-widest group-hover:text-white transition-colors">Ajustes y Reportes</h3>
+      <i class="chevron fa-solid fa-chevron-down w-2.5 h-2.5 text-gray-600 transition-transform ml-auto text-[10px] group-hover:text-white/50"></i>
+    </div>
+    <div id="section-reports" class="px-4 pb-4 p-4 lg:pb-4">
+      <div class="flex flex-col gap-2 mb-4">
+        <label class="text-[8px] text-gray-500 font-black uppercase tracking-widest mb-1">WhatsApp Responsable</label>
+        <input id="report-phone" type="text" placeholder="+51 987 654 321" class="bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 text-[11px] font-mono text-white w-full outline-none focus:border-green-500/50 transition-all" />
+      </div>
+      <div class="space-y-4">
+        <label class="flex items-center justify-between cursor-pointer group">
+          <span class="text-[10px] text-gray-400 group-hover:text-white transition-colors font-mono uppercase">Alertas Sonoras</span>
+          <input type="checkbox" id="toggle-sound" class="w-3 h-3 rounded bg-white/5 border-white/10 accent-blue-500" />
+        </label>
+        <div class="space-y-1.5">
+          <div class="flex justify-between text-[9px] font-mono uppercase tracking-tighter font-bold text-gray-500">
+            <span>Volumen de Alerta</span>
+            <span id="volume-val" class="text-blue-400 font-bold">50%</span>
+          </div>
+          <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.5" class="w-full h-1.5 bg-white/5 rounded-full appearance-none cursor-pointer accent-blue-500 hover:accent-blue-400 transition-all" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="mt-auto p-4 text-center text-gray-500 text-[10px] border-t border-white/5 z-30">
+    &copy; 2026 JQP IA. Todos los derechos reservados - v1.0.0
+  </footer>
+  </div>
+</aside>
+
+<script>
+  const sidebar = document.getElementById('mobile-sidebar');
+  const btnOpen = document.getElementById('btn-open-sidebar');
+  const btnClose = document.getElementById('btn-close-sidebar');
+  const backdrop = document.getElementById('sidebar-backdrop');
+
+  // Lógica de Sliders
+  const confSlider = document.getElementById('conf-slider') as HTMLInputElement;
+  const confVal = document.getElementById('conf-val');
+  const iouSlider = document.getElementById('iou-slider') as HTMLInputElement;
+  const iouVal = document.getElementById('iou-val');
+
+  confSlider?.addEventListener('input', (e) => {
+    const val = (e.target as HTMLInputElement).value;
+    if (confVal) confVal.textContent = val;
+    window.dispatchEvent(new CustomEvent('ppe:setConf', { detail: parseFloat(val) }));
+  });
+
+  iouSlider?.addEventListener('input', (e) => {
+    const val = (e.target as HTMLInputElement).value;
+    if (iouVal) iouVal.textContent = val;
+    window.dispatchEvent(new CustomEvent('ppe:setIou', { detail: parseFloat(val) }));
+  });
+
+  // Lógica de Resetear Parámetros
+  const btnResetParams = document.getElementById('btn-reset-params');
+  btnResetParams?.addEventListener('click', () => {
+    if (confSlider) confSlider.value = "0.25";
+    if (confVal) confVal.textContent = "0.25";
+    if (iouSlider) iouSlider.value = "0.45";
+    if (iouVal) iouVal.textContent = "0.45";
+    window.dispatchEvent(new CustomEvent('ppe:setConf', { detail: 0.25 }));
+    window.dispatchEvent(new CustomEvent('ppe:setIou', { detail: 0.45 }));
+  });
+
+  // Lógica de Volumen y Sonido Persistente
+  const volumeSlider = document.getElementById('volume-slider') as HTMLInputElement;
+  const volumeVal = document.getElementById('volume-val');
+  const toggleSound = document.getElementById('toggle-sound') as HTMLInputElement;
+
+  if (volumeSlider) {
+    const savedVol = localStorage.getItem('ppe_alert_volume') || '0.5';
+    volumeSlider.value = savedVol;
+    if (volumeVal) volumeVal.textContent = `${Math.round(parseFloat(savedVol) * 100)}%`;
+    
+    volumeSlider.addEventListener('input', (e) => {
+      const val = (e.target as HTMLInputElement).value;
+      if (volumeVal) volumeVal.textContent = `${Math.round(parseFloat(val) * 100)}%`;
+      localStorage.setItem('ppe_alert_volume', val);
+    });
+  }
+
+  if (toggleSound) {
+    toggleSound.checked = localStorage.getItem('ppe_alert_sound') === 'true';
+    toggleSound.onchange = () => localStorage.setItem('ppe_alert_sound', toggleSound.checked.toString());
+  }
+
+  const toggleSidebar = (open: boolean) => {
+    if (!sidebar || !backdrop) return;
+    if (window.innerWidth >= 1024) return;
+
+    const dimLayer = document.getElementById('detector-dim-layer');
+
+    if (open) {
+      sidebar.classList.remove('pointer-events-none', '-translate-x-full');
+      sidebar.classList.add('translate-x-0');
+
+      backdrop.classList.remove('hidden');
+      backdrop.style.pointerEvents = 'auto';
+      setTimeout(() => {
+        backdrop.style.opacity = '1';
+        backdrop.style.pointerEvents = 'auto';
+      }, 10);
+
+      if (dimLayer) {
+        dimLayer.style.opacity = '1';
+        dimLayer.style.background = 'rgba(0,0,0,0.5)';
+        dimLayer.style.backdropFilter = 'blur(8px) brightness(0.7)';
+      }
+    } else {
+      sidebar.classList.add('-translate-x-full');
+      sidebar.classList.remove('translate-x-0');
+      sidebar.classList.add('pointer-events-none');
+
+      backdrop.style.opacity = '0';
+      backdrop.style.pointerEvents = 'none';
+
+      setTimeout(() => backdrop.classList.add('hidden'), 300);
+
+      if (dimLayer) {
+        dimLayer.style.opacity = '0';
+        dimLayer.style.backdropFilter = 'blur(0px) brightness(1)';
+      }
+    }
+  };
+
+  // Limpiar estados al redimensionar para evitar que el sidebar desaparezca en desktop
+  window.addEventListener('resize', () => {
+    if (window.innerWidth >= 1024 && sidebar) {
+      // En desktop el sidebar es lg:static, no debe depender del transform
+      sidebar.classList.remove('-translate-x-full', 'translate-x-0');
+      backdrop?.classList.add('hidden');
+
+      const dimLayer = document.getElementById('detector-dim-layer');
+      if (dimLayer) {
+        dimLayer.style.opacity = '0';
+        dimLayer.style.backdropFilter = 'blur(0px) brightness(1)';
+      }
+    }
+  });
+
+  btnOpen?.addEventListener('click', () => toggleSidebar(true));
+  btnClose?.addEventListener('click', (e) => { e.stopPropagation(); toggleSidebar(false); });
+  backdrop?.addEventListener('click', () => toggleSidebar(false));
+
+  // Lógica de Deslizamiento (Swipe to Close)
+  let touchStartX = 0;
+  let touchCurrentX = 0;
+  let isOpen = false;
+
+  sidebar?.addEventListener('touchstart', (e) => {
+    touchStartX = e.touches[0].clientX;
+    sidebar.style.transition = 'none';
+  }, {passive: true});
+
+  sidebar?.addEventListener('touchmove', (e) => {
+    touchCurrentX = e.touches[0].clientX;
+    const deltaX = touchCurrentX - touchStartX;
+
+    // Solo permitir deslizar hacia la izquierda para cerrar (ahora que está en la izquierda)
+    if (deltaX < 0) {
+      // Usar inline solo durante el gesto (y limpiarlo al terminar)
+      sidebar.style.transform = `translateX(${deltaX}px)`;
+
+      // Sincronizar visualmente el cierre (opacidad y blur)
+      const progress = 1 - (Math.abs(deltaX) / sidebar.offsetWidth);
+      const opacity = Math.max(0, progress);
+      
+      if (backdrop) backdrop.style.opacity = (0.6 * opacity).toString();
+      
+      const dimLayer = document.getElementById('detector-dim-layer');
+      if (dimLayer) {
+        dimLayer.style.opacity = opacity.toString();
+        dimLayer.style.backdropFilter = `blur(${8 * opacity}px) brightness(${1 - 0.3 * opacity})`;
+      }
+    }
+  }, {passive: true});
+
+  sidebar?.addEventListener('touchend', (e) => {
+    const deltaX = e.changedTouches[0].clientX - touchStartX;
+    if (deltaX < -100) {
+      // toggleSidebar(false) usa clases
+      toggleSidebar(false);
+      sidebar.style.transform = '';
+    } else {
+      // volver a estado abierto usando clases
+      sidebar.classList.remove('-translate-x-full');
+      sidebar.classList.add('translate-x-0');
+      sidebar.classList.remove('pointer-events-none');
+
+      sidebar.style.transform = '';
+    }
+    sidebar.style.transition = 'transform 0.3s ease-out';
+  }, {passive: true});
+</script>

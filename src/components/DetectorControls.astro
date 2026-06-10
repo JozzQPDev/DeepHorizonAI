@@ -1,0 +1,72 @@
+---
+interface Props {
+  idPrefix?: string;
+}
+const { idPrefix = '' } = Astro.props;
+const p = idPrefix;
+---
+<div id={`${p}detector-controls-wrapper`} class="absolute bottom-6 right-3 left-3 md:left-auto md:right-6 flex flex-col-reverse md:items-end gap-3 z-[65] transition-all duration-500 opacity-100 translate-y-0">
+  <div class="flex items-center justify-between md:justify-end gap-1 p-1.5 bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl transition-opacity duration-300 w-full md:w-auto relative">
+    
+    <button
+      id={`${p}det-btn-mode`}
+      class="flex-1 md:flex-none flex items-center justify-center gap-2 px-2 sm:px-3 py-2.5 md:py-2 bg-blue-600/30 md:bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-[10px] font-bold font-mono rounded-xl transition-all border border-blue-500/30 active:scale-95"
+    > 
+       <i class="fa-solid fa-camera"></i>
+      <span id={`${p}det-mode-text`} class="hidden xs:inline md:inline">CÁMARA</span>
+    </button>
+    
+    <div class="w-px h-6 bg-white/10 mx-1"></div>
+
+    <button
+      id={`${p}det-btn-source`}
+      title="Cambiar fuente de video"
+      class="flex-1 md:flex-none flex items-center justify-center gap-2 px-2 sm:px-3 py-2.5 md:py-2 hover:bg-white/10 text-white text-[10px] font-bold font-mono rounded-xl transition-all border border-transparent active:scale-95 active:bg-white/20"
+    >
+      <i class="fa-solid fa-upload"></i>
+      <span class="hidden xs:inline md:inline">SUBIR</span>
+    </button>
+
+    <div class="w-px h-6 bg-white/10 mx-1"></div>
+
+    <button
+      id={`${p}det-btn-ip`}
+      title="Conectar cámara WiFi"
+      class="flex-1 md:flex-none flex items-center justify-center gap-2 px-3 py-2.5 md:py-2 hover:bg-white/10 text-white text-[10px] font-bold font-mono rounded-xl transition-all border border-transparent active:scale-95 active:bg-white/20"
+    >
+      <i class="fa-solid fa-qrcode"></i>
+    </button>
+
+    <div class="w-px h-6 bg-white/10 mx-1"></div>
+
+    <button
+      id={`${p}det-btn-history`}
+      title="Historial de detecciones"
+      class="flex-1 md:flex-none flex items-center justify-center gap-2 px-3 py-2.5 md:py-2 hover:bg-white/10 text-white text-[10px] font-bold font-mono rounded-xl transition-all border border-transparent active:scale-95 active:bg-white/20"
+    >
+      <i class="fa-solid fa-clock-rotate-left text-orange-500"></i>
+    </button>
+
+    <div class="w-px h-6 bg-white/10 mx-1"></div>
+
+    <button
+      id={`${p}det-btn-clear`}
+      title="Limpiar monitor"
+      class="flex-1 md:flex-none flex items-center justify-center gap-2 px-3 py-2.5 md:py-2 hover:bg-red-500/10 text-gray-400 hover:text-red-400 text-[10px] font-bold font-mono rounded-xl transition-all border border-transparent active:scale-95 active:bg-red-500/20"
+    >
+      <i class="fa-solid fa-broom"></i>
+    </button>
+
+  </div>
+
+  <div class="flex flex-row-reverse md:flex-col items-center md:items-end gap-2 w-full md:w-auto">
+    <div id={`${p}live-indicator`} class="hidden items-center gap-2 px-3 py-1.5 bg-red-500/20 border border-red-500/30 rounded-full backdrop-blur-md shadow-lg">
+      <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]"></span>
+      <span class="text-[10px] font-black text-red-500 font-mono uppercase tracking-wider">LIVE</span>
+    </div>
+
+    <select id={`${p}camera-select`} class="hidden flex-1 md:flex-none h-9 md:h-7 px-3 bg-black/60 backdrop-blur-xl border border-white/10 rounded-xl text-[10px] font-mono text-white outline-none focus:border-blue-500/50 appearance-none">
+      <option value="">Cargando cámaras...</option>
+    </select>
+  </div>
+</div>

@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%; /* Usar min-height para permitir que el contenido crezca */
+  height: 100%; /* Mantener height para el layout principal */
+  overflow: hidden; /* Mantener overflow hidden para el layout principal */
+  background: #0a0c0e;
+  color: #e2e8f0;
+  font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
+  overflow-x: hidden;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2d333b transparent;
+}
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+/* Repartir altura completa en el grid de monitores */
+#drop-zone {
+  grid-auto-rows: 1fr;
+  height: 100%; /* Permite que el flex-1 del padre controle el tamaño real */
+  overflow-y: auto;
+}
+
+/* Evitar que los items colapsen y se queden en una altura parcial */
+#drop-zone .detector-slot {
+  min-height: 250px; /* Altura mínima para que el video sea visible en móvil */
+  height: 100%;
+}

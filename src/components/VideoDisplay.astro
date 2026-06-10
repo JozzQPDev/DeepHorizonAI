@@ -1,0 +1,32 @@
+---
+interface Props {
+  idPrefix?: string;
+}
+const { idPrefix = '' } = Astro.props;
+const p = idPrefix;
+---
+<!-- Elemento de Video principal -->
+<video 
+  id={`${p}main-video`} 
+  class="max-w-full max-h-full object-contain pointer-events-none z-[1]"
+  autoplay 
+  muted 
+  playsinline
+></video>
+
+<!-- Elemento para Streams IP (MJPEG) -->
+<img 
+  id={`${p}ip-cam-stream`} 
+  class="hidden max-w-full max-h-full object-contain z-[1]" 
+  crossorigin="anonymous"
+/>
+
+<canvas id={`${p}detection-canvas`} class="absolute inset-0 w-full h-full pointer-events-none z-10"></canvas>
+
+<!-- Capa de Flash para Capturas -->
+<div id={`${p}snapshot-flash`} class="absolute inset-0 bg-white opacity-0 pointer-events-none z-[100] transition-opacity duration-150"></div>
+
+<div id={`${p}empty-state`} class="absolute inset-0 flex flex-col items-center justify-center text-gray-500 font-mono gap-4 pointer-events-none z-[5] bg-[#0a0c0e]">
+  <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 opacity-20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg>
+  <p class="text-[10px] uppercase tracking-widest opacity-40">Esperando señal de video...</p>
+</div>

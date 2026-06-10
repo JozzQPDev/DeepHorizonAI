@@ -1,0 +1,269 @@
+---
+import VideoDisplay from './VideoDisplay.astro';
+import DetectorControls from './DetectorControls.astro';
+import IpCamModal from './IpCamModal.astro';
+
+interface Props {
+  idPrefix?: string;
+}
+
+const { idPrefix = '' } = Astro.props;
+const prefix = idPrefix;
+---
+
+<ppe-detector data-prefix={idPrefix} class="contents">
+  <div id={`${prefix}detector-container`} class="relative w-full h-full flex items-center justify-center bg-black group overflow-hidden border-2 border-transparent transition-colors duration-300">
+    <!-- Botón para quitar esta pantalla específica -->
+    <button id={`${prefix}close-btn`} class="absolute top-4 right-4 z-50 p-2 bg-black/40 hover:bg-red-500 text-white rounded-lg transition-all opacity-0 group-hover:opacity-100 border border-white/10 shadow-xl" title="Quitar este monitor">
+      <i class="fa-solid fa-xmark text-xs"></i>
+    </button>
+
+    <!-- Etiqueta de Identificación Personalizable -->
+    <div class="absolute top-4 left-4 z-50 flex items-center gap-2 bg-black/40 backdrop-blur-md border border-white/10 rounded-lg px-3 py-1.5 transition-all hover:bg-black/60 hover:border-blue-500/50 group/label">
+      <input
+        type="text"
+        id={`${prefix}camera-name-input`}
+        class="bg-transparent border-none outline-none text-[10px] font-bold text-white/50 focus:text-blue-400 uppercase tracking-widest w-24 focus:w-48 transition-all placeholder:text-white/20"
+        placeholder="Nombre de cámara..."
+      />
+      <div class="opacity-0 group-hover/label:opacity-100 transition-opacity">
+        <i class="fa-solid fa-pen-to-square text-[8px] text-white/30"></i>
+      </div>
+    </div>
+
+    <!-- Banner de Infracciones Local -->
+    <div id={`${prefix}viol-banner`} class="absolute top-16 left-4 z-60 hidden flex-col gap-2 pointer-events-none max-w-[80%]"></div>
+
+    <!-- Overlay visual controlado -->
+    <div
+      id={`${prefix}detector-dim-layer`}
+      class="absolute inset-0 z-50 pointer-events-none transition-all duration-300 opacity-0"
+      style="background: rgba(0,0,0,0); backdrop-filter: blur(0px) brightness(1);"
+    ></div>
+
+    <!-- Panel de Historial Autónomo -->
+    <div id={`${prefix}history-panel`} class="absolute top-0 right-0 z-70 w-[85%] sm:w-64 h-full bg-[#0d1117]/95 backdrop-blur-xl border-l border-white/10 translate-x-full transition-transform duration-300 flex flex-col shadow-2xl overflow-hidden">
+      <div class="flex items-center justify-between p-4 border-b border-white/5">
+        <h4 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+          <i class="fa-solid fa-clock-rotate-left text-orange-500"></i>
+          Historial Local
+        </h4>
+        <button id={`${prefix}close-history`} class="text-gray-500 hover:text-white transition-colors">
+          <i class="fa-solid fa-xmark text-xs"></i>
+        </button>
+      </div>
+      <div class="p-3 border-b border-white/5">
+        <select id={`${prefix}history-filter`} class="w-full py-2 px-3 bg-white/[0.03] border border-white/10 rounded-lg text-[10px] text-gray-300 font-mono outline-none focus:border-blue-500/50 transition-all">
+          <option value="all">Mostrar Todo</option>
+          <option value="Captura Manual">Capturas Manuales</option>
+          <!-- Las opciones se cargarán dinámicamente -->
+        </select>
+      </div>
+      <div id={`${prefix}history-list`} class="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-hide"></div>
+      <div class="p-3 border-t border-white/5">
+        <button id={`${prefix}clear-history-local`} class="w-full py-3 sm:py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[9px] font-bold uppercase tracking-tighter rounded-lg transition-all">
+          Limpiar Historial
+        </button>
+      </div>
+    </div>
+
+    <VideoDisplay idPrefix={idPrefix} />
+    <DetectorControls idPrefix={idPrefix} />
+
+    <!-- Input de archivos oculto -->
+    <input type="file" id={`${prefix}video-input`} accept="video/*" class="hidden" />
+  </div>
+
+  <IpCamModal idPrefix={idPrefix} />
+</ppe-detector>
+
+<script>
+  import { DetectorController } from "../lib/detector-controller";
+  import { CLASS_LABELS } from "../lib/detector-utils";
+
+  const loadJsQR = () => import("jsqr").then(m => m.default);
+
+  class PPEDetector extends HTMLElement {
+    private detector!: DetectorController;
+    prefix: string = ""; // Cambiado de 'private' a 'public' (por defecto)
+
+    connectedCallback() {
+      this.prefix = this.dataset.prefix || "";
+      this.init();
+    }
+
+    private get<T extends HTMLElement>(selector: string): T {
+      const el = this.querySelector<T>(selector);
+      if (!el) throw new Error(`Element ${selector} not found in PPEDetector`);
+      return el;
+    }
+
+    private init() {
+      const p = this.prefix;
+      const container = this.get<HTMLElement>(`#${p}detector-container`);
+      
+      const videoEl = this.get<HTMLVideoElement>(`#${p}main-video`);
+      const ipImgEl = this.get<HTMLImageElement>(`#${p}ip-cam-stream`);
+      const canvasEl = this.get<HTMLCanvasElement>(`#${p}detection-canvas`);
+      const cameraSelect = this.get<HTMLSelectElement>(`#${p}camera-select`);
+      const nameInput = this.get<HTMLInputElement>(`#${p}camera-name-input`);
+      
+      const modalIp = this.get<HTMLElement>(`#${p}modal-ip-cam`);
+      const videoInput = this.get<HTMLInputElement>(`#${p}video-input`);
+      const inputIp = this.get<HTMLInputElement>(`#${p}input-ip-url`);
+      const scanText = this.get<HTMLElement>(`#${p}scan-text`);
+
+      this.detector = new DetectorController({
+        videoEl, ipImgEl, canvasEl, container, cameraSelect, nameInputEl: nameInput,
+        emptyState: this.querySelector<HTMLElement>(`#${p}empty-state`),
+        liveInd: this.querySelector<HTMLElement>(`#${p}live-indicator`),
+        modeText: this.querySelector<HTMLElement>(`#${p}det-mode-text`),
+        flashEl: this.querySelector<HTMLElement>(`#${p}snapshot-flash`),
+        violBannerEl: this.querySelector<HTMLElement>(`#${p}viol-banner`),
+        historyListEl: this.querySelector<HTMLElement>(`#${p}history-list`),
+        // No need to pass historyFilterSelect here, it's handled in init
+      });
+
+      const storageKey = `ppe_name_${p}`;
+      const savedName = localStorage.getItem(storageKey);
+      nameInput.value = savedName || `CÁMARA ${p.match(/\d+/)?.[0] || ''}`;
+      nameInput.addEventListener('input', () => localStorage.setItem(storageKey, nameInput.value));
+
+      const controlsWrapper = this.get<HTMLElement>(`#${p}detector-controls-wrapper`);
+      let idleTimer: number;
+      const showControls = () => {
+        controlsWrapper.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none');
+        controlsWrapper.classList.add('opacity-100', 'translate-y-0');
+        window.clearTimeout(idleTimer);
+        idleTimer = window.setTimeout(() => {
+          controlsWrapper.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
+        }, 3000);
+      };
+
+      // En móviles 'pointermove' no es suficiente para despertar los controles con un tap
+      container.addEventListener('pointerdown', showControls);
+      container.addEventListener('pointermove', showControls);
+      
+      // Mostrar controles inicialmente
+      showControls();
+
+      this.get(`#${p}close-btn`).onclick = () => {
+        window.dispatchEvent(new CustomEvent('ppe:removeSlot', { detail: container.id }));
+      };
+
+      // Selectores seguros para evitar que el fallo de un botón opcional rompa la carga
+      const btnMode = this.querySelector<HTMLElement>(`#${p}det-btn-mode`);
+      const btnSnapshot = this.querySelector<HTMLElement>(`#${p}det-btn-snapshot`);
+      const btnSource = this.querySelector<HTMLElement>(`#${p}det-btn-source`);
+      const btnIp = this.querySelector<HTMLElement>(`#${p}det-btn-ip`);
+      const btnClear = this.querySelector<HTMLElement>(`#${p}det-btn-clear`);
+      const btnHistory = this.querySelector<HTMLElement>(`#${p}det-btn-history`);
+      const historyPanel = this.get<HTMLElement>(`#${p}history-panel`);
+      const btnCloseHistory = this.get<HTMLElement>(`#${p}close-history`);
+      const btnClearHistoryLocal = this.get<HTMLElement>(`#${p}clear-history-local`);
+      const historyFilterSelect = this.querySelector<HTMLSelectElement>(`#${p}history-filter`);
+
+      // Populate history filter options
+      if (historyFilterSelect) {
+        for (const key in CLASS_LABELS) {
+          if (Object.prototype.hasOwnProperty.call(CLASS_LABELS, key)) {
+            const option = document.createElement('option');
+            option.value = key;
+            option.textContent = CLASS_LABELS[key];
+            historyFilterSelect.appendChild(option);
+          }
+        }
+        historyFilterSelect.addEventListener('change', (e) => this.detector.setHistoryFilter((e.target as HTMLSelectElement).value));
+      }
+
+      if (btnMode) btnMode.onclick = () => this.detector.toggleMode();
+      if (btnSnapshot) btnSnapshot.onclick = () => this.detector.takeSnapshot();
+      if (btnSource) btnSource.onclick = () => videoInput.click();
+      if (btnHistory) btnHistory.onclick = () => historyPanel.classList.toggle('translate-x-full');
+      if (btnCloseHistory) btnCloseHistory.onclick = () => historyPanel.classList.add('translate-x-full');
+      if (btnClearHistoryLocal) btnClearHistoryLocal.onclick = () => {
+        this.detector.clearHistory();
+        window.dispatchEvent(new CustomEvent('ppe:sourceChange'));
+      };
+
+      if (btnClear) btnClear.onclick = () => {
+        this.detector.stopSource();
+        if (videoInput) videoInput.value = "";
+        if (inputIp) inputIp.value = "";
+        window.dispatchEvent(new CustomEvent('ppe:sourceChange'));
+      };
+      
+      if (btnIp) btnIp.onclick = () => {
+        if (this.detector.getIsIpCam()) this.detector.stopSource();
+        else modalIp.classList.replace('hidden', 'flex');
+      };
+
+      const btnIpCancel = this.querySelector<HTMLElement>(`#${p}btn-ip-cancel`);
+      const btnIpConnect = this.querySelector<HTMLElement>(`#${p}btn-ip-connect`);
+      const btnIpScan = this.querySelector<HTMLElement>(`#${p}btn-ip-scan`);
+
+      if (btnIpCancel) btnIpCancel.onclick = () => modalIp.classList.replace('flex', 'hidden');
+      
+      if (btnIpConnect) btnIpConnect.onclick = () => {
+        if (inputIp.value.trim()) {
+          this.detector.connectIpCam(inputIp.value.trim());
+          modalIp.classList.replace('flex', 'hidden');
+          window.dispatchEvent(new CustomEvent('ppe:sourceChange'));
+        }
+      };
+
+      if (btnIpScan) btnIpScan.onclick = async () => {
+        const code = await this.detector.scanQR(loadJsQR, scanText);
+        if (code) {
+          inputIp.value = code;
+          btnIpConnect?.click();
+        }
+      };
+
+      cameraSelect.onchange = () => this.detector.startCamera(cameraSelect.value);
+
+      videoInput.onchange = () => {
+        const file = videoInput.files?.[0];
+        if (file) {
+          // Detener cualquier fuente previa y preparar el controlador
+          this.detector.stopSource();
+          this.detector.setDisposed(false);
+          videoEl.src = URL.createObjectURL(file);
+          videoEl.play();
+          this.detector.updateUI();
+          this.detector.startLoop();
+          window.dispatchEvent(new CustomEvent('ppe:sourceChange'));
+        }
+      };
+
+      this.detector.enumerateCameras();
+      this.detector.startLoop();
+    }
+
+    /**
+     * Sincroniza la interfaz del detector.
+     */
+    public updateDetectorUI() {
+      if (this.detector) this.detector.updateUI();
+    }
+
+    /**
+     * Destruye el controlador y limpia recursos. Llamado cuando el slot se oculta.
+     */
+    public stopDetectorSource() {
+      if (this.detector) {
+        this.detector.dispose();
+      }
+
+      const p = this.prefix;
+
+      // Limpiar inputs físicos para que la UI regrese a su estado inicial
+      const videoInput = this.querySelector<HTMLInputElement>(`#${p}video-input`);
+      const inputIp = this.querySelector<HTMLInputElement>(`#${p}input-ip-url`);
+      if (videoInput) videoInput.value = "";
+      if (inputIp) inputIp.value = "";
+    }
+  }
+
+  customElements.define('ppe-detector', PPEDetector);
+</script>
