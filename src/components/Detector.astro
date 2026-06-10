@@ -53,7 +53,7 @@ const prefix = idPrefix;
         </button>
       </div>
       <div class="p-3 border-b border-white/5">
-        <select id={`${prefix}history-filter`} class="w-full py-2 px-3 bg-white/[0.03] border border-white/10 rounded-lg text-[10px] text-gray-300 font-mono outline-none focus:border-blue-500/50 transition-all">
+        <select id={`${prefix}history-filter`} class="w-full py-2 px-3 bg-white/3 border border-white/10 rounded-lg text-[10px] text-gray-300 font-mono outline-none focus:border-blue-500/50 transition-all">
           <option value="all">Mostrar Todo</option>
           <option value="Captura Manual">Capturas Manuales</option>
           <!-- Las opciones se cargarán dinámicamente -->
@@ -70,11 +70,22 @@ const prefix = idPrefix;
     <VideoDisplay idPrefix={idPrefix} />
     <DetectorControls idPrefix={idPrefix} />
 
+    <!-- Contenedor del QR (Movido aquí para cubrir todo el monitor) -->
+    <div id={`${prefix}qr-overlay`} class="hidden absolute inset-0 z-[70] flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in zoom-in duration-300">
+      <div class="bg-white p-4 rounded-2xl shadow-2xl mb-4">
+        <div id={`${prefix}qr-code-canvas`} class="w-48 h-48 bg-gray-100 flex items-center justify-center text-black text-[10px] font-mono text-center px-4">
+          Generando código...
+        </div>
+      </div>
+      <p class="text-white font-mono text-[10px] font-bold tracking-widest uppercase mb-1 text-center px-4">Escanea para conectar cámara</p>
+      <p class="text-blue-400 font-mono text-[9px] animate-pulse">ESPERANDO CONEXIÓN...</p>
+      <button id={`${prefix}close-qr`} class="mt-4 px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold rounded-xl transition-all">CANCELAR</button>
+    </div>
+
     <!-- Input de archivos oculto -->
     <input type="file" id={`${prefix}video-input`} accept="video/*" class="hidden" />
+    <IpCamModal idPrefix={idPrefix} />
   </div>
-
-  <IpCamModal idPrefix={idPrefix} />
 </ppe-detector>
 
 <script>
@@ -121,6 +132,8 @@ const prefix = idPrefix;
         flashEl: this.querySelector<HTMLElement>(`#${p}snapshot-flash`),
         violBannerEl: this.querySelector<HTMLElement>(`#${p}viol-banner`),
         historyListEl: this.querySelector<HTMLElement>(`#${p}history-list`),
+        qrOverlayEl: this.querySelector<HTMLElement>(`#${p}qr-overlay`),
+        qrContainerEl: this.querySelector<HTMLElement>(`#${p}qr-code-canvas`),
         // No need to pass historyFilterSelect here, it's handled in init
       });
 
@@ -194,9 +207,40 @@ const prefix = idPrefix;
       };
       
       if (btnIp) btnIp.onclick = () => {
-        if (this.detector.getIsIpCam()) this.detector.stopSource();
-        else modalIp.classList.replace('hidden', 'flex');
+        if (this.detector.getIsIpCam()) {
+          this.detector.stopSource();
+          window.dispatchEvent(new CustomEvent('ppe:sourceChange'));
+        } else {
+          // Manejo del overlay QR directamente desde el controlador del monitor
+          const qrOverlay = this.get<HTMLElement>(`#${p}qr-overlay`);
+          const qrContainer = this.get<HTMLElement>(`#${p}qr-code-canvas`);
+          const isHidden = qrOverlay.classList.contains('hidden');
+
+          if (isHidden) {
+            qrOverlay.classList.remove('hidden');
+            qrOverlay.classList.add('flex');
+            
+            const remoteUrl = `${window.location.origin}/remote?id=${p}`;
+            if (qrContainer) {
+              qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(remoteUrl)}" class="w-full h-full" alt="Código QR" onerror="this.onerror=null; this.src=''; this.alt='Error'; this.parentElement.textContent='Error al cargar QR';" />`;
+            }
+
+            window.dispatchEvent(new CustomEvent('ppe:showRemoteQR', { detail: { idPrefix: p, url: remoteUrl } }));
+          } else {
+            qrOverlay.classList.add('hidden');
+            qrOverlay.classList.remove('flex');
+          }
+        }
       };
+
+      const closeQrBtn = this.querySelector<HTMLElement>(`#${p}close-qr`);
+      if (closeQrBtn) {
+        closeQrBtn.onclick = () => {
+          const qrOverlay = this.get<HTMLElement>(`#${p}qr-overlay`);
+          qrOverlay.classList.add('hidden');
+          qrOverlay.classList.remove('flex');
+        };
+      }
 
       const btnIpCancel = this.querySelector<HTMLElement>(`#${p}btn-ip-cancel`);
       const btnIpConnect = this.querySelector<HTMLElement>(`#${p}btn-ip-connect`);

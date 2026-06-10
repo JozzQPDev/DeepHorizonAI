@@ -14,6 +14,8 @@ export interface DetectorElements {
   violBannerEl: HTMLElement | null;
   nameInputEl: HTMLInputElement | null;
   historyListEl: HTMLElement | null;
+  qrOverlayEl?: HTMLElement | null;     // Contenedor del QR
+  qrContainerEl?: HTMLElement | null;   // Donde se dibuja el QR
 }
 
 export class DetectorController {
@@ -36,14 +38,16 @@ export class DetectorController {
     class_name_display: string; // Store the class name for filtering/display
   }[] = []; // New array to store all history items
   
+  private idPrefix: string; // Add idPrefix to the class
   // Estado de detección
   public conf = 0.25;
   public iou = 0.45;
   public activeFilters: string[] | null = null;
   public selectedDeviceId: string | null = null;
 
-  constructor(elements: DetectorElements) {
+  constructor(elements: DetectorElements, idPrefix: string = '') {
     this.els = elements;
+    this.idPrefix = idPrefix; // Initialize idPrefix
     this.initGlobalListeners();
   }
 
@@ -52,6 +56,21 @@ export class DetectorController {
     window.addEventListener('ppe:setIou', (e: any) => { this.iou = e.detail; });
     window.addEventListener('ppe:setFilters', (e: any) => { this.activeFilters = e.detail; });
     window.addEventListener('ppe:flipCamera', () => { if(this.isCamera) this.flipCamera(); });
+
+    // Escuchar cuando el móvil se conecte (Simulado vía evento global por ahora)
+    // En un sistema real, esto vendría de un WebSocket o polling de API
+    window.addEventListener('ppe:remoteConnected', (e: any) => {
+      if (e.detail.idPrefix === this.idPrefix) {
+        this.hideQR();
+        this.connectIpCam(e.detail.streamUrl);
+      }
+    });
+  }
+
+  private hideQR() {
+    const overlay = document.getElementById(`${this.idPrefix}qr-overlay`);
+    overlay?.classList.add('hidden');
+    overlay?.classList.remove('flex');
   }
 
   public async startLoop() {
@@ -77,7 +96,7 @@ export class DetectorController {
     const isPaused = this.isIpCam ? false : videoEl.paused;
     const isEnded = this.isIpCam ? false : videoEl.ended;
 
-    if (isReady && !isPaused && !isEnded && !this.isProcessing && hasSource) {
+    if (isReady && !isPaused && !isEnded && !this.isProcessing && hasSource && !this.isScanningQR) { // Don't process frames if scanning QR
       this.isProcessing = true;
       try {
         const blob = await this.getFrameBlob();
@@ -333,6 +352,7 @@ export class DetectorController {
     this.isIpCam = false;
     this.isCamera = false;
     this.isProcessing = false;
+    this.isScanningQR = false; // Stop scanning if source is stopped
     this.lastViolationsKey = ""; // Reiniciar clave de banners
 
     // Limpiar el canvas de dibujos anteriores
@@ -352,7 +372,7 @@ export class DetectorController {
     await this.startCamera();
   }
 
-  public async startCamera(deviceId: string | null = null) {
+  public async startCamera(deviceId: string | null = null): Promise<boolean> { // Changed return type to boolean
     this.stopSource();
     this.disposed = false; // Resetear flag si se reusa el controlador
     try {
@@ -366,10 +386,12 @@ export class DetectorController {
       this.isCamera = true;
       this.startLoop(); // Asegurar que el loop corre
       this.updateUI();
+      return true; // Indicate success
     } catch (err) {
       console.error("Camera error:", err);
       this.isCamera = false;
-      this.updateUI();
+      this.updateUI(); // Update UI to reflect camera failure
+      return false; // Indicate failure
     }
   }
 
@@ -397,32 +419,10 @@ export class DetectorController {
     window.dispatchEvent(new CustomEvent('ppe:toggleMode', { detail: this.isCamera }));
   }
 
-  public updateUI() {
-    const { modeText, liveInd, cameraSelect, emptyState, videoEl, ipImgEl } = this.els;
-    
-    if (modeText) modeText.textContent = this.isCamera ? "CERRAR CÁMARA" : (this.isIpCam ? "CERRAR WIFI" : "USAR CÁMARA");
-    
-    liveInd?.classList.toggle('hidden', !this.isCamera);
-    liveInd?.classList.toggle('flex', this.isCamera);
-    cameraSelect?.classList.toggle('hidden', !this.isCamera);
-    
-    const hasSource = this.hasActiveSource();
-
-    // Ocultamos el video si no tiene fuente activa o si estamos en modo IP (MJPEG)
-    videoEl.classList.toggle('hidden', !hasSource || this.isIpCam);
-    // Ocultamos el stream IP si no hay fuente o no estamos en modo IP
-    ipImgEl.classList.toggle('hidden', !this.isIpCam || !hasSource);
-
-    // Notificar si el modo cámara está activo para controles externos (como el botón Flip)
-    window.dispatchEvent(new CustomEvent('ppe:toggleMode', { detail: this.isCamera }));
-
-    if (emptyState) {
-      emptyState.style.display = hasSource ? 'none' : 'flex';
-    }
-  }
-
-  public async scanQR(loadJsQR: any, scanTextEl: HTMLElement | null) {
-    if (this.isScanningQR) return;
+  /**
+   * Realiza un escaneo de código QR utilizando el feed de video actual del monitor.
+   */
+  public async scanQR(loadJsQR: any, scanTextEl: HTMLElement | null): Promise<string | null> {
     try {
       const jsQR = await loadJsQR();
       this.isScanningQR = true;
@@ -430,8 +430,9 @@ export class DetectorController {
       
       if (!this.isCamera) await this.startCamera();
 
-      const scan = () => {
-        if (!this.isScanningQR) return;
+      const scan = (): Promise<string | null> => {
+        if (!this.isScanningQR || this.disposed) return Promise.resolve(null);
+        
         if (this.els.videoEl.readyState === this.els.videoEl.HAVE_ENOUGH_DATA) {
           const canvas = document.createElement("canvas");
           canvas.width = this.els.videoEl.videoWidth;
@@ -444,7 +445,7 @@ export class DetectorController {
             if (code) {
               this.isScanningQR = false;
               if (scanTextEl) scanTextEl.textContent = "¡VINCULADO!";
-              return code.data;
+              return Promise.resolve(code.data);
             }
           }
         }
@@ -453,10 +454,35 @@ export class DetectorController {
       return await scan();
     } catch (err) {
       this.isScanningQR = false;
-      if (scanTextEl) scanTextEl.textContent = "ESCANEAR CÓDIGO QR";
+      if (scanTextEl) scanTextEl.textContent = "ERROR AL ESCANEAR";
       return null;
     }
   }
+
+  public updateUI() {
+    const { modeText, liveInd, cameraSelect, emptyState, videoEl, ipImgEl } = this.els;
+    
+    if (modeText) modeText.textContent = this.isCamera ? "CERRAR CÁMARA" : (this.isIpCam ? "CERRAR MÓVIL" : "USAR CÁMARA");
+    
+    liveInd?.classList.toggle('hidden', !this.isCamera);
+    liveInd?.classList.toggle('flex', this.isCamera);
+    cameraSelect?.classList.toggle('hidden', !this.isCamera);
+
+    const hasSource = this.hasActiveSource();
+
+    // Ocultamos el video si no tiene fuente activa o si estamos en modo IP (MJPEG)
+    videoEl.classList.toggle('hidden', !hasSource || this.isIpCam);
+    // Ocultamos el stream IP si no hay fuente o no estamos en modo IP
+    ipImgEl.classList.toggle('hidden', !this.isIpCam || !hasSource);
+    
+    // Notificar si el modo cámara está activo para controles externos (como el botón Flip)
+    window.dispatchEvent(new CustomEvent('ppe:toggleMode', { detail: this.isCamera }));
+
+    if (emptyState) {
+      emptyState.style.display = hasSource ? 'none' : 'flex';
+    }
+  }
+
 
   public getIsIpCam() { return this.isIpCam; }
 

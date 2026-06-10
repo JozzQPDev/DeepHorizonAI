@@ -5,7 +5,7 @@ interface Props {
 const { idPrefix = '' } = Astro.props;
 const p = idPrefix;
 ---
-<div id={`${p}modal-ip-cam`} class="fixed inset-0 z-100 items-center justify-center bg-black/80 hidden backdrop-blur-sm p-4">
+<div id={`${p}modal-ip-cam`} class="absolute inset-0 z-100 items-center justify-center bg-black/80 hidden backdrop-blur-sm p-4">
   <div class="bg-[#0d1117] border border-white/10 p-6 rounded-xl shadow-2xl max-w-sm w-full font-mono">
     <h3 class="text-sm text-white mb-4 flex items-center gap-2">
       <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><circle cx="12" cy="20" r="2"></circle></svg>

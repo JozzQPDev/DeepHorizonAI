@@ -45,6 +45,7 @@ const p = idPrefix;
       class="flex-1 md:flex-none flex items-center justify-center gap-2 px-3 py-2.5 md:py-2 hover:bg-white/10 text-white text-[10px] font-bold font-mono rounded-xl transition-all border border-transparent active:scale-95 active:bg-white/20"
     >
       <i class="fa-solid fa-qrcode"></i>
+      <span id={`${p}det-ip-text`} class="hidden xs:inline md:inline">VINCULAR MÓVIL</span>
     </button>
 
     <div class="w-px h-6 bg-white/10 mx-1"></div>
@@ -84,6 +85,7 @@ const p = idPrefix;
 <script>
   // Lógica para el botón de giro de cámara (Flip Camera)
   const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const p = '<!-- @raw Astro.props.idPrefix -->'; // Astro will replace this with the actual prop value
 
   if (isMobile) {
     // Escuchar el evento de cambio de modo para mostrar/ocultar dinámicamente
