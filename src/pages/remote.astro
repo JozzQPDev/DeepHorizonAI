@@ -128,13 +128,20 @@ import Layout from '../layouts/Layout.astro';
                 if (preview) preview.srcObject = stream;
                 if (preview) preview.play().catch(console.error);
                 
-                if (setupView) setupView.classList.add('hidden');
-                if (cameraView) {
-                    cameraView.classList.remove('hidden');
-                    cameraView.classList.add('flex');
-                }
-
-                startPeerCall(); // Start the peer call process immediately, it will retry if needed
+                // Esperar a que la cámara local tenga resolución antes de llamar al monitor
+                const checkPreviewReady = () => {
+                  if (preview && preview.videoWidth > 2) {
+                    if (setupView) setupView.classList.add('hidden');
+                    if (cameraView) {
+                        cameraView.classList.remove('hidden');
+                        cameraView.classList.add('flex');
+                    }
+                    startPeerCall();
+                  } else {
+                    setTimeout(checkPreviewReady, 100);
+                  }
+                };
+                checkPreviewReady();
 
             } catch (err) {
                 alert("Error: No se pudo acceder a la cámara. Por favor permite el acceso en los ajustes de tu navegador.");

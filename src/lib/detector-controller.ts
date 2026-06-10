@@ -245,7 +245,7 @@ export class DetectorController {
   private hasActiveSource(): boolean {
     const { videoEl, ipImgEl } = this.els;
     // Verificamos contra la URL actual de la página para descartar fuentes vacías/reseteadas
-    const hasVideo = !!videoEl.srcObject || (!!videoEl.src && videoEl.src !== window.location.href);
+    const hasVideo = !!videoEl.srcObject || (!!videoEl.src && videoEl.src !== window.location.href && videoEl.src !== "about:blank");
     const hasIp = this.isIpCam && !!ipImgEl.src && ipImgEl.src !== window.location.href;
     console.log(`[DetectorController ${this.idPrefix}] hasActiveSource: hasVideo=${hasVideo} (srcObject=${!!videoEl.srcObject}, src='${videoEl.src}'), hasIp=${hasIp}`);
     return hasVideo || hasIp;
@@ -438,7 +438,7 @@ export class DetectorController {
       }
       this.els.videoEl.srcObject = null;
       this.els.videoEl.removeAttribute("src");
-      this.els.videoEl.src = "";
+      this.els.videoEl.src = "about:blank";
       // No llamar a .load() aquí, ya que puede intentar cargar la URL de la página
       this.els.videoEl.onloadedmetadata = null; // Clear event listener
     }
