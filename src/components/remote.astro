@@ -48,10 +48,17 @@
         <video id="preview" autoplay playsinline muted class="w-full h-full object-cover"></video>
         <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/60"></div>
         
-        <div class="absolute top-10 left-6">
-            <div class="flex items-center gap-3">
-                <div class="w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(239,68,68,1)]"></div>
-                <span class="text-[10px] font-black text-white uppercase tracking-[0.3em]">Transmitiendo</span>
+        <div class="absolute top-6 left-6 right-6 flex items-center justify-between z-10">
+            <!-- Transmisión Status -->
+            <div class="flex items-center gap-2 px-3 py-1.5 bg-red-500/20 border border-red-500/30 rounded-full backdrop-blur-md shadow-lg">
+                <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]"></span>
+                <span class="text-[10px] font-black text-red-500 font-mono uppercase tracking-wider">LIVE</span>
+            </div>
+
+            <!-- Calidad de Señal (Placeholder) -->
+            <div class="flex items-center gap-2 px-3 py-1.5 bg-green-500/20 border border-green-500/30 rounded-full backdrop-blur-md shadow-lg">
+                <i class="fa-solid fa-wifi text-green-500 text-xs"></i>
+                <span class="text-[10px] font-black text-green-500 font-mono uppercase tracking-wider">SEÑAL BUENA</span>
             </div>
         </div>
 
@@ -61,7 +68,7 @@
                 FINALIZAR SESIÓN
             </button>
             <button id="flip-camera-btn" class="mt-4 w-full max-w-xs py-4 bg-white/5 hover:bg-white/10 text-white rounded-2xl font-bold text-[10px] tracking-widest border border-white/10 backdrop-blur-md transition-all">
-                FINALIZAR SESIÓN
+                USAR CÁMARA FRONTAL
             </button>
         </div>
     </div>
