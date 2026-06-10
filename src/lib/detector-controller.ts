@@ -172,6 +172,12 @@ export class DetectorController {
 
     this.peer.on('call', (call: any) => {
       console.log("[DetectorController] Recibiendo llamada remota en:", peerId);
+      
+      // Si ya hay una llamada activa diferente, la cerramos para evitar colisiones de audio/video
+      if (this.currentCall && this.currentCall !== call) {
+        this.currentCall.close();
+      }
+
       this.currentCall = call;
       call.answer();
 
@@ -201,15 +207,15 @@ export class DetectorController {
 
   public connectRemoteStream(stream: MediaStream) {
     console.log(`[DetectorController ${this.idPrefix}] Conectando stream remoto. Tracks:`, stream.getVideoTracks().length);
-    this.stopSource(true); // Evitar flicker de la UI al limpiar la fuente anterior
+    
+    // Detenemos solo los tracks de cámara local previos sin cerrar la llamada WebRTC entrante
+    if (this.currentStream && this.currentStream !== stream) {
+      this.currentStream.getTracks().forEach(t => t.stop());
+    }
+    this.currentStream = stream;
 
     const video = this.els.videoEl;
-    
-    // Limpieza agresiva para evitar conflictos de buffer
     video.pause();
-    video.removeAttribute("src");
-    video.src = "about:blank"; // Usar about:blank para una limpieza explícita y segura
-    video.load(); // Forzar la carga de un src vacío para limpiar el buffer
 
     video.muted = true;
     video.playsInline = true;
