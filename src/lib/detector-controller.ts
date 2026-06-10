@@ -16,10 +16,12 @@ export interface DetectorElements {
   historyListEl: HTMLElement | null;
   qrOverlayEl?: HTMLElement | null;     // Contenedor del QR
   qrContainerEl?: HTMLElement | null;   // Donde se dibuja el QR
+  resolutionEl?: HTMLElement | null;    // Elemento para mostrar la resolución
 }
 
 export class DetectorController {
   private els: DetectorElements;
+  private peer: any = null;
   private isCamera = false;
   private currentStream: MediaStream | null = null;
   private isProcessing = false;
@@ -48,7 +50,13 @@ export class DetectorController {
   constructor(elements: DetectorElements, idPrefix: string = '') {
     this.els = elements;
     this.idPrefix = idPrefix; // Initialize idPrefix
+    this.initPeer();
     this.initGlobalListeners();
+
+    // Actualizar resolución cuando carguen los metadatos del video o la imagen IP
+    this.els.videoEl.addEventListener('loadedmetadata', () => this.updateUI());
+    this.els.videoEl.addEventListener('resize', () => this.updateUI());
+    this.els.ipImgEl.onload = () => this.updateUI();
   }
 
   private initGlobalListeners() {
@@ -75,6 +83,40 @@ export class DetectorController {
         this.connectIpCam(e.detail.streamUrl);
       }
     });
+  }
+
+  /**
+   * Inicializa la conexión PeerJS para recibir video del móvil
+   */
+  private initPeer() {
+    // Esperar a que la librería esté disponible en el window
+    const Peer = (window as any).Peer;
+    if (!Peer) {
+      setTimeout(() => this.initPeer(), 1000);
+      return;
+    }
+
+    // El ID del monitor será ppe-monitor-det1- (o el prefijo que tenga)
+    this.peer = new Peer(`ppe-monitor-${this.idPrefix}`);
+
+    this.peer.on('call', (call: any) => {
+      console.log("[DetectorController] Recibiendo llamada de cámara remota...");
+      call.answer(); // Respondemos la llamada (el monitor no envía video al móvil)
+      
+      call.on('stream', (remoteStream: MediaStream) => {
+        console.log("[DetectorController] Stream remoto recibido");
+        this.hideQR();
+        this.connectRemoteStream(remoteStream);
+      });
+    });
+  }
+
+  public connectRemoteStream(stream: MediaStream) {
+    this.stopSource();
+    this.els.videoEl.srcObject = stream;
+    this.isCamera = true;
+    this.startLoop();
+    this.updateUI();
   }
 
   private hideQR() {
@@ -470,7 +512,7 @@ export class DetectorController {
   }
 
   public updateUI() {
-    const { modeText, liveInd, cameraSelect, emptyState, videoEl, ipImgEl } = this.els;
+    const { modeText, liveInd, cameraSelect, emptyState, videoEl, ipImgEl, resolutionEl } = this.els;
     
     if (modeText) modeText.textContent = this.isCamera ? "CERRAR CÁMARA" : (this.isIpCam ? "CERRAR MÓVIL" : "USAR CÁMARA");
     
@@ -479,6 +521,20 @@ export class DetectorController {
     cameraSelect?.classList.toggle('hidden', !this.isCamera);
 
     const hasSource = this.hasActiveSource();
+
+    // Mostrar resolución si hay una fuente activa
+    if (resolutionEl) {
+      const w = this.isIpCam ? ipImgEl.naturalWidth : videoEl.videoWidth;
+      const h = this.isIpCam ? ipImgEl.naturalHeight : videoEl.videoHeight;
+      if (hasSource && w > 0) {
+        resolutionEl.textContent = `${w}×${h}`;
+        resolutionEl.parentElement?.classList.remove('hidden');
+        resolutionEl.parentElement?.classList.add('flex');
+      } else {
+        resolutionEl.parentElement?.classList.add('hidden');
+        resolutionEl.parentElement?.classList.remove('flex');
+      }
+    }
 
     // Ocultamos el video si no tiene fuente activa o si estamos en modo IP (MJPEG)
     videoEl.classList.toggle('hidden', !hasSource || this.isIpCam);
