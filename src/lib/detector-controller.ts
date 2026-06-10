@@ -36,11 +36,13 @@ export class DetectorController {
   private els: DetectorElements;
   private peer: any = null;
   private currentCall: any = null; // Guardar referencia a la llamada activa
+  private dataConn: any = null; // Conexión de datos para alertas remotas
   private currentStream: MediaStream | null = null;
   private loopRunning = false; // Nueva bandera para controlar el bucle
   private isProcessing = false;
   private isIpCam = false;
   private isScanningQR = false;
+  private isRemoteConnecting = false; // Estado para el proceso de handshake WebRTC
   private lastViolationsKey = "";
   private disposed = false;
   private lastLog = { classes: new Set<string>(), time: 0 };
@@ -94,6 +96,16 @@ export class DetectorController {
 
     this.statsInterval = window.setInterval(async () => {
       if (!this.currentCall?.peerConnection) return;
+
+      // Detectar si el móvil perdió internet o la conexión se rompió
+      const iceState = this.currentCall.peerConnection.iceConnectionState;
+      if (iceState === 'disconnected' || iceState === 'failed') {
+        if (this.els.connectionWarningEl) {
+          this.els.connectionWarningEl.textContent = "MÓVIL DESCONECTADO";
+          this.els.connectionWarningEl.classList.remove('hidden');
+        }
+        return; // Detenemos el cálculo de stats si no hay conexión
+      }
 
       try {
         const stats = await this.currentCall.peerConnection.getStats();
@@ -177,8 +189,17 @@ export class DetectorController {
       if (this.currentCall && this.currentCall !== call) {
         this.currentCall.close();
       }
+      
+      // Mostrar spinner y ocultar QR inmediatamente al recibir la señal
+      this.isRemoteConnecting = true;
+      this.hideQR();
+      this.updateUI();
 
       this.currentCall = call;
+
+      // Abrir canal de datos de vuelta al móvil que llamó
+      this.dataConn = this.peer.connect(call.peer);
+      
       call.answer();
 
       call.on('stream', (remoteStream: MediaStream) => {
@@ -189,19 +210,23 @@ export class DetectorController {
       call.on('close', () => {
         console.log("[DetectorController] Llamada remota cerrada.");
         this.stopSource();
+        this.isRemoteConnecting = false;
       });
       call.on('error', (err: any) => {
         console.error("[DetectorController] Error en llamada remota:", err);
         this.stopSource();
+        this.isRemoteConnecting = false;
       });
     });
 
     this.peer.on('error', (err: any) => {
+      this.isRemoteConnecting = false;
       if (err.type === 'unavailable-id') {
         console.error("[DetectorController] El ID de Peer ya está en uso. Reintenta o refresca.");
       } else {
         console.error("[DetectorController] Error en PeerJS:", err);
       }
+      this.updateUI();
     });
   }
 
@@ -230,6 +255,7 @@ export class DetectorController {
     this._onStreamReadyHandler = () => {
       if (video.videoWidth > 2) {
         console.log(`[DetectorController ${this.idPrefix}] Resolución real detectada: ${video.videoWidth}x${video.videoHeight}`);
+        this.isRemoteConnecting = false; // Finaliza la carga
         video.play().catch(e => console.warn("Autoplay block:", e));
         this.updateUI();
         this.startLoop();
@@ -497,6 +523,15 @@ export class DetectorController {
       thumbnail = thumbCanvas.toDataURL('image/jpeg', 0.5);
     }
 
+    // Enviar alerta al móvil a través del canal de datos si hay violaciones
+    if (this.dataConn && this.dataConn.open && result.violations?.length > 0) {
+      this.dataConn.send({
+        type: 'PPE_ALERTA',
+        violations: result.violations.map(v => v.class_name),
+        timestamp: new Date().toLocaleTimeString()
+      });
+    }
+
     // Manejo de historial autónomo
     this.addToHistory(result.violations || [], thumbnail);
 
@@ -551,6 +586,11 @@ export class DetectorController {
       this.currentCall = null;
     }
 
+    if (this.dataConn) {
+      this.dataConn.close();
+      this.dataConn = null;
+    }
+
     if (this.statsInterval) {
       clearInterval(this.statsInterval);
       this.statsInterval = null;
@@ -560,6 +600,7 @@ export class DetectorController {
     this.isIpCam = false;
     this.isCamera = false; // Reset isCamera flag
     this.isProcessing = false;
+    this.isRemoteConnecting = false;
     this.loopRunning = false; // Detener el bucle cuando la fuente se detiene
     this.isScanningQR = false; // Stop scanning if source is stopped
     this.lastViolationsKey = ""; // Reiniciar clave de banners
@@ -593,8 +634,8 @@ export class DetectorController {
     try {
       const constraints: MediaStreamConstraints = {
         video: deviceId 
-          ? { deviceId: { exact: deviceId }, width: { ideal: 1280 } }
-          : { facingMode: this.facingMode, width: { ideal: 1280 } }
+          ? { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
+          : { facingMode: this.facingMode, width: { ideal: 1280 }, height: { ideal: 720 } }
       };
       this.currentStream = await navigator.mediaDevices.getUserMedia(constraints); // Asignar a currentStream
       this.els.videoEl.srcObject = this.currentStream;
@@ -707,7 +748,9 @@ export class DetectorController {
 
     // Ocultamos el video si no tiene fuente activa, si estamos en modo IP (MJPEG)
     // o si el video aún está cargando (resolución stub de 2x2 típica de WebRTC al inicio)
-    const isVideoLoading = hasSource && !this.isIpCam && videoEl.videoWidth <= 2;
+    // Ahora también incluimos el estado isRemoteConnecting para mostrar el spinner antes de tener el stream
+    const isVideoLoading = (hasSource && !this.isIpCam && videoEl.videoWidth <= 2) || this.isRemoteConnecting;
+    
     videoEl.classList.toggle('hidden', !hasSource || this.isIpCam || isVideoLoading);
 
     // Controlar la visibilidad del spinner de carga basándose en si el video está conectando
