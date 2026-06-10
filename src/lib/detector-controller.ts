@@ -26,6 +26,7 @@ export interface DetectorElements {
   qrOverlayEl?: HTMLElement | null;     // Contenedor del QR
   qrContainerEl?: HTMLElement | null;   // Donde se dibuja el QR
   resolutionEl?: HTMLElement | null;    // Elemento para mostrar la resolución
+  loadingSpinnerEl?: HTMLElement | null; // Elemento para el spinner de carga
   connectionWarningEl?: HTMLElement | null; // Elemento para el aviso de conexión inestable
   qualityTextEl?: HTMLElement | null;   // Texto de calidad (ms/Mbps)
   qualityIconEl?: HTMLElement | null;   // Icono de señal
@@ -683,7 +684,9 @@ export class DetectorController {
     if (resolutionEl) {
       const w = this.isIpCam ? ipImgEl.naturalWidth : videoEl.videoWidth;
       const h = this.isIpCam ? ipImgEl.naturalHeight : videoEl.videoHeight;
-      if (hasSource && w > 0) {
+      
+      // Solo mostramos la etiqueta de resolución si es una resolución real (> 2x2)
+      if (hasSource && w > 2) {
         resolutionEl.textContent = `${w}×${h}`;
         resolutionEl.parentElement?.classList.remove('hidden');
         resolutionEl.parentElement?.classList.add('flex');
@@ -692,6 +695,11 @@ export class DetectorController {
         resolutionEl.parentElement?.classList.add('hidden');
         resolutionEl.parentElement?.classList.remove('flex');
       }
+    }
+
+    // Controlar la visibilidad del spinner de carga
+    if (this.els.loadingSpinnerEl) {
+      this.els.loadingSpinnerEl.classList.toggle('hidden', !(hasSource && videoEl.videoWidth <= 2 && !this.isIpCam));
     }
 
     // Ocultamos el video si no tiene fuente activa o si estamos en modo IP (MJPEG)

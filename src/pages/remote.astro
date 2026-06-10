@@ -120,7 +120,8 @@ import Layout from '../layouts/Layout.astro';
         startBtn.onclick = async () => {
             try {
                 stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: currentFacingMode, width: { ideal: 1280 } },
+                    // Limitamos a 1280x720 para máxima estabilidad en transmisión remota
+                    video: { facingMode: currentFacingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
                     audio: false 
                 });
                 
@@ -165,7 +166,7 @@ import Layout from '../layouts/Layout.astro';
             flipCameraBtn.textContent = currentFacingMode === 'environment' ? 'USAR CÁMARA FRONTAL' : 'USAR CÁMARA TRASERA';
             try {
                 stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: currentFacingMode, width: { ideal: 1280 } },
+                    video: { facingMode: currentFacingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
                     audio: false
                 });
                 if (preview) preview.srcObject = stream;

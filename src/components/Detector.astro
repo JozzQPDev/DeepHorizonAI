@@ -100,6 +100,11 @@ const prefix = idPrefix;
       <p class="text-blue-400 font-mono text-[9px] animate-pulse">ESPERANDO CONEXIÓN...</p>
       <button id={`${prefix}close-qr`} class="mt-4 px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold rounded-xl transition-all">CANCELAR</button>
     </div>
+    
+    <!-- Spinner de carga para cuando el video está en 2x2 -->
+    <div id={`${prefix}loading-spinner`} class="absolute inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm hidden">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-white/50"></div>
+    </div>
 
     <!-- Input de archivos oculto -->
     <input type="file" id={`${prefix}video-input`} accept="video/*" class="hidden" />
@@ -170,6 +175,7 @@ const prefix = idPrefix;
         qrOverlayEl: this.querySelector<HTMLElement>(`#${p}qr-overlay`),
         qrContainerEl: this.querySelector<HTMLElement>(`#${p}qr-code-canvas`),
         resolutionEl: this.querySelector<HTMLElement>(`#${p}res-text`),
+        loadingSpinnerEl: this.querySelector<HTMLElement>(`#${p}loading-spinner`),
         connectionWarningEl: this.querySelector<HTMLElement>(`#${p}conn-warning`),
         qualityTextEl: this.querySelector<HTMLElement>(`#${p}quality-text`),
         qualityIconEl: this.querySelector<HTMLElement>(`#${p}quality-icon`),
