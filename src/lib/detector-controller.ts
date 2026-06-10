@@ -65,14 +65,6 @@ export class DetectorController {
     window.addEventListener('ppe:setFilters', (e: any) => { this.activeFilters = e.detail; });
     window.addEventListener('ppe:flipCamera', () => { if(this.isCamera) this.flipCamera(); });
 
-    // Escuchar cuando el móvil se conecte (Simulado vía evento global por ahora)
-    // En un sistema real, esto vendría de un WebSocket o polling de API
-    window.addEventListener('ppe:remoteConnected', (e: any) => {
-      if (e.detail.idPrefix === this.idPrefix) {
-        this.hideQR();
-        this.connectIpCam(e.detail.streamUrl);
-      }
-    });
   }
 
   /**
