@@ -1,48 +1,54 @@
 # Deep Horizon 🛡️👷‍♂️
 ### Sistema de Monitoreo Inteligente de EPP
 
-**Deep Horizon** es una plataforma avanzada de monitoreo en tiempo real diseñada para garantizar la seguridad industrial mediante la detección automatizada de Equipos de Protección Personal (EPP). Utilizando modelos de visión artificial de última generación, el sistema identifica proactivamente el uso de cascos, guantes, chalecos y otros implementos críticos en entornos laborales.
+**Deep Horizon** es una plataforma avanzada de monitoreo en tiempo real diseñada para garantizar la seguridad industrial mediante la detección automatizada de Equipos de Protección Personal (EPP).
 
 ## 🚀 Características Principales
 
-- **Detección Multi-fuente Híbrida:** 
+- **Detección Multi-fuente Híbrida:**
     - Soporte nativo para cámaras Web locales (Webcam).
     - Integración de cámaras IP/WiFi mediante protocolos de transmisión MJPEG.
     - Sistema de vinculación rápida mediante escaneo de códigos QR.
 - **Análisis en Tiempo Real:** Interfaz de baja latencia con procesamiento de fotogramas optimizado mediante Canvas API.
 - **Gestión de Infracciones:**
-    - Historial inteligente con miniaturas dinámicas.
+    - Historial dinámico con persistencia de sesión.
     - Sistema de alertas sonoras y visuales (Toasts).
-    - Integración de reportes rápidos vía **WhatsApp**.
-- **Filtros Personalizables:** Panel de control dinámico que permite filtrar detecciones por categorías (Casco, Guantes, Persona, etc.) con persistencia local.
-- **Interfaz Industrial:** 
-    - Diseño responsivo con estética "Dark Mode" de alta visibilidad.
-    - Sidebar interactivo para gestión de dispositivos y estadísticas.
+    - Reportes instantáneos a través de **WhatsApp**.
+- **Optimización Móvil:**
+    - Interfaz adaptativa (Mobile-First).
+    - Soporte para gestos táctiles en controles de navegación.
+    - Notificaciones tipo Toast diseñadas para interacción con una sola mano.
 - **Capturas Manuales:** Funcionalidad de "Snapshot" para registro instantáneo de la escena.
+
+## 🏗️ Arquitectura del Software
+
+- **Controladores Desacoplados:** Uso de clases especializadas (`DetectorController`, `MonitorController`) para separar la lógica de captura de la lógica de estadísticas.
+- **Tipado Estricto:** Implementación integral de TypeScript para garantizar la integridad de los datos de inferencia desde la API hasta el renderizado.
+- **Gestión de Memoria:** Reutilización de elementos Canvas y manejo de flujos de video para optimizar el rendimiento en dispositivos móviles.
 
 ## 🛠️ Stack Tecnológico
 
 - **Frontend:** [Astro](https://astro.build/) + TypeScript.
 - **Estilos:** Tailwind CSS con arquitectura de diseño moderna.
-- **Procesamiento de Imagen:** HTML5 Canvas API para el renderizado de *Bounding Boxes* de alta performance.
-- **Comunicación:** Fetch API con gestión avanzada de `AbortController` y timeouts para robustez de red.
-- **Backend (Referencia):** API basada en FastAPI con modelos YOLOv8 para inferencia de alta precisión.
+- **IA:** YOLOv8 vía API REST.
 
-## 📂 Estructura del Proyecto
+##  Uso en Móviles
 
-```text
-src/
-├── lib/
-│   ├── api.ts                 # Cliente de integración con el servicio de IA.
-│   ├── detector-controller.ts  # Orquestador del ciclo de vida del video y análisis.
-│   ├── detector-utils.ts       # Funciones matemáticas de dibujo y normalización de coordenadas.
-│   └── filter-controller.ts    # Gestión de estados y persistencia de filtros de usuario.
-├── components/                 # Componentes de la interfaz (Astro).
-├── styles/                     # Estilos globales y configuraciones de Tailwind.
-└── pages/                      # Rutas principales del sitio.
-```
+Para una mejor experiencia en el navegador del celular:
+1. Asegúrate de otorgar permisos de cámara.
+2. Utiliza el **Sidebar táctil** deslizándolo desde la parte superior o lateral.
+3. El sistema ajustará automáticamente la resolución de la detección para ahorrar datos y batería.
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+## 🚦 Comandos
+
+| Comando | Acción |
+| :--- | :--- |
+| `npm install` | Instala las dependencias del proyecto |
+| `npm run dev` | Inicia el servidor de desarrollo en `localhost:4321` |
+| `npm run build` | Genera la versión de producción en `./dist/` |
+
+---
+*Desarrollado como proyecto de estudios en Visión Artificial aplicada.*
 
 There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
 

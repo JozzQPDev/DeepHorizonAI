@@ -1,4 +1,4 @@
 - [x] Crear/añadir overlay de blur/dim en Detector (Detector.astro) y controlarlo desde Sidebar (móvil).
 - [x] Eliminar el uso de `detectorContainer.style.filter = ...` en Sidebar.astro para evitar problemas de stacking.
 - [x] Conectar lógica en Sidebar.astro para ajustar overlay en drag (blur/brightness) sin afectar stacking del aside.
-- [ ] Probar en navegador móvil: abrir/cerrar sidebar, arrastrar, scrol interno; confirmar que queda delante del video.
+- [x] Probar en navegador móvil: abrir/cerrar sidebar, arrastrar, scrol interno; confirmar que queda delante del video.

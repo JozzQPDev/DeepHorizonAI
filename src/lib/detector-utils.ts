@@ -1,3 +1,5 @@
+import type { PredictResult, Detection } from "./api";
+
 export const CLASS_COLORS: Record<string, string> = {
   'Helmet': '#f59e0b',
   'Gloves': '#06b6d4',
@@ -32,15 +34,15 @@ export function translateClass(cls: string): string {
   return CLASS_LABELS[cls] || cls;
 }
 
-export function drawDetections(data: any, canvas: HTMLCanvasElement) {
+export function drawDetections(data: PredictResult, canvas: HTMLCanvasElement) {
   const ctx = canvas.getContext('2d');
-  if (!ctx || !data.image) return;
+  if (!ctx || !data.image || !data.detections) return;
 
   const scaleX = canvas.width / data.image.width;
   const scaleY = canvas.height / data.image.height;
   const baseScale = Math.max(canvas.width, canvas.height) / 1280; // Escala basada en el lado más largo
 
-  (data.detections || []).forEach((det: any) => {
+  data.detections.forEach((det: Detection) => {
     const [x1, y1, x2, y2] = det.bbox_xyxy;
     // Prioridad al rojo si es violación, sino el color de su clase
     const color = det.is_violation ? '#ef4444' : (CLASS_COLORS[det.class_name] || '#22c55e');

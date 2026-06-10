@@ -8,13 +8,13 @@ import "@fortawesome/fontawesome-free/css/all.min.css";
 <aside 
   id="mobile-sidebar"
   class="fixed lg:static top-0 left-0 w-[85vw] max-w-85 lg:w-85 
-  h-full bg-[#0a0c10] lg:bg-[#0d1117] lg:border-r border-white/5 overflow-y-auto flex flex-col
+  h-[100dvh] lg:h-full bg-[#0a0c10] lg:bg-[#0d1117] lg:border-r border-white/5 overflow-y-auto flex flex-col
   z-200 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 
-  ease-out p-4 lg:p-0 shadow-2xl lg:shadow-none scrollbar-hide touch-pan-x"
+  ease-out shadow-2xl lg:shadow-none scrollbar-hide touch-pan-y"
 >
 
   <!-- Cabecera del Drawer Móvil -->
-<div class="sticky top-0 z-50 flex items-center justify-between mb-6 lg:hidden px-4 py-3 bg-[#0f1115]/80 backdrop-blur-md rounded-2xl border border-white/5 shadow-inner shrink-0">
+<div class="sticky top-0 z-50 flex items-center justify-between lg:hidden px-6 py-4 bg-[#0a0c10]/95 backdrop-blur-xl border-b border-white/10 shadow-lg shrink-0">
     
     <div class="flex items-center gap-3">
       <div class="w-8 h-8 flex items-center justify-center">
@@ -36,7 +36,7 @@ import "@fortawesome/fontawesome-free/css/all.min.css";
     </button>
 </div>
 
-  <div class="flex-1 flex flex-col gap-4 lg:gap-0 min-h-0">
+  <div class="flex-1 flex flex-col gap-4 lg:gap-0 min-h-0 p-4 lg:p-0">
 
   <!-- Header Profesional -->
   <header class="hidden lg:flex sticky top-0 z-20 items-center gap-3 px-6 py-5 border-b border-white/5 bg-[#0d1117]/80 backdrop-blur-xl">
@@ -299,20 +299,36 @@ import "@fortawesome/fontawesome-free/css/all.min.css";
 
   // Lógica de Deslizamiento (Swipe to Close)
   let touchStartX = 0;
+  let touchStartY = 0;
   let touchCurrentX = 0;
-  let isOpen = false;
+  let isHorizontalSwipe = false;
 
   sidebar?.addEventListener('touchstart', (e) => {
     touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    isHorizontalSwipe = false;
     sidebar.style.transition = 'none';
   }, {passive: true});
 
   sidebar?.addEventListener('touchmove', (e) => {
-    touchCurrentX = e.touches[0].clientX;
+    const touch = e.touches[0];
+    touchCurrentX = touch.clientX;
     const deltaX = touchCurrentX - touchStartX;
+    const deltaY = touch.clientY - touchStartY;
+
+    // Si el movimiento es predominantemente vertical, abortamos la lógica de swipe
+    // para permitir que el navegador maneje el scroll nativo del contenedor.
+    if (!isHorizontalSwipe && Math.abs(deltaY) > Math.abs(deltaX)) {
+      return;
+    }
+
+    // Si el movimiento horizontal supera un umbral, confirmamos que es un cierre (swipe)
+    if (!isHorizontalSwipe && Math.abs(deltaX) > 10) {
+      isHorizontalSwipe = true;
+    }
 
     // Solo permitir deslizar hacia la izquierda para cerrar (ahora que está en la izquierda)
-    if (deltaX < 0) {
+    if (isHorizontalSwipe && deltaX < 0) {
       // Usar inline solo durante el gesto (y limpiarlo al terminar)
       sidebar.style.transform = `translateX(${deltaX}px)`;
 
@@ -331,6 +347,12 @@ import "@fortawesome/fontawesome-free/css/all.min.css";
   }, {passive: true});
 
   sidebar?.addEventListener('touchend', (e) => {
+    if (!isHorizontalSwipe) {
+      sidebar.style.transform = '';
+      sidebar.style.transition = 'transform 0.3s ease-out';
+      return;
+    }
+
     const deltaX = e.changedTouches[0].clientX - touchStartX;
     if (deltaX < -100) {
       // toggleSidebar(false) usa clases

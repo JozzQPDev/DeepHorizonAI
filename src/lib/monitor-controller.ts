@@ -139,7 +139,7 @@ export class MonitorController {
     }
   }
 
-  private updateStats(data: any) {
+  private updateStats(data: PredictResult) {
     const total = data.stats?.total_objects ?? 0;
     const viol = data.stats?.total_violations ?? 0;
     
@@ -154,17 +154,17 @@ export class MonitorController {
       liveClasses: document.getElementById("live-classes")
     };
 
-    if (els.total) els.total.textContent = total;
+    if (els.total) els.total.textContent = total.toString();
     if (els.safe) els.safe.textContent = (total - viol).toString();
-    if (els.warn) els.warn.textContent = viol;
-    if (els.ms) els.ms.textContent = data.inference?.milliseconds ?? "—";
+    if (els.warn) els.warn.textContent = viol.toString();
+    if (els.ms) els.ms.textContent = data.inference?.milliseconds?.toString() ?? "—";
     if (els.dev) els.dev.textContent = data.device ?? "—";
     if (els.res) els.res.textContent = data.image ? `${data.image.width}×${data.image.height}` : "—";
     if (els.ts) els.ts.textContent = new Date().toLocaleString();
 
     if (els.liveClasses) {
-      const uniq = [...new Set((data.detections || []).map((d: any) => d.class_name))];
-      els.liveClasses.innerHTML = uniq.map(c => `
+      const uniq = [...new Set<string>((data.detections || []).map((d) => d.class_name))];
+      els.liveClasses.innerHTML = uniq.map((c: string) => `
         <span class="px-1.5 py-0.5 text-[8px] bg-white/5 border border-white/10 rounded text-gray-400">${translateClass(c)}</span>
       `).join("");
     }
@@ -192,8 +192,8 @@ export class MonitorController {
     // Estilo: Rojo intenso, glassmorphism con blur, bordes suaves y animación de entrada lateral
     toast.className = "bg-red-600/90 backdrop-blur-lg text-white p-3 rounded-2xl shadow-2xl border border-white/20 flex items-center gap-3 animate-in fade-in slide-in-from-left-4 duration-500 pointer-events-auto cursor-pointer active:scale-95 transition-transform";
     
-    const classes = [...new Set(violations.map(v => v.class_name))];
-    const label = classes.length > 1 ? "Múltiples Infracciones" : translateClass(classes[0]);
+    const classes = [...new Set<string>(violations.map(v => v.class_name))];
+    const label = classes.length > 1 ? "Múltiples Infracciones" : translateClass(classes[0] || "");
 
     toast.innerHTML = `
       <div class="shrink-0 w-9 h-9 bg-white/20 rounded-full flex items-center justify-center">
