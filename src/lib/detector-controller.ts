@@ -412,7 +412,8 @@ export class DetectorController {
     const ctx = canvas.getContext('2d');
     if (!ctx || canvas.width === 0 || canvas.height === 0) return null; // Asegurar dimensiones válidas
     ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
-    return new Promise(r => canvas.toBlob(r, "image/jpeg", 0.8));
+    // Bajamos la calidad a 0.5 para acelerar la transmisión y el procesamiento en la API
+    return new Promise(r => canvas.toBlob(r, "image/jpeg", 0.5));
   }
 
   private addToHistory(violations: Detection[], thumbnail: string | null) {
@@ -605,6 +606,13 @@ export class DetectorController {
     this.isScanningQR = false; // Stop scanning if source is stopped
     this.lastViolationsKey = ""; // Reiniciar clave de banners
 
+    // Limpiar manejadores de espera de stream para evitar ejecuciones en fuentes muertas
+    if (this._onStreamReadyHandler) {
+      this.els.videoEl.removeEventListener('resize', this._onStreamReadyHandler);
+      this.els.videoEl.removeEventListener('loadedmetadata', this._onStreamReadyHandler);
+      this._onStreamReadyHandler = null;
+    }
+
     // Limpiar el canvas de dibujos anteriores
     const ctx = this.els.canvasEl.getContext('2d');
     if (ctx) ctx.clearRect(0, 0, this.els.canvasEl.width, this.els.canvasEl.height);
@@ -632,16 +640,38 @@ export class DetectorController {
     this.stopSource();
     this.disposed = false; // Resetear flag si se reusa el controlador
     try {
+      // Optimizamos: La cámara frontal (user) suele requerir menos resolución para ser fluida
+      const isFront = this.facingMode === 'user';
+      
       const constraints: MediaStreamConstraints = {
         video: deviceId 
           ? { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
-          : { facingMode: this.facingMode, width: { ideal: 1280 }, height: { ideal: 720 } }
+          : { facingMode: this.facingMode, width: { ideal: isFront ? 640 : 1280 }, height: { ideal: isFront ? 480 : 720 } }
       };
       this.currentStream = await navigator.mediaDevices.getUserMedia(constraints); // Asignar a currentStream
       this.els.videoEl.srcObject = this.currentStream;
       this.isCamera = true;
-      this.startLoop(); // Asegurar que el loop corre
-      this.updateUI();
+
+      // Sincronización: Esperar a que la cámara local esté lista antes de iniciar el bucle
+      // Esto evita que el sistema se "trabe" al intentar procesar frames sin resolución
+      this._onStreamReadyHandler = () => {
+        const video = this.els.videoEl;
+        if (video.videoWidth > 2) {
+          console.log(`[DetectorController] Cámara local lista: ${video.videoWidth}x${video.videoHeight}`);
+          video.play().catch(e => console.warn("Autoplay block:", e));
+          this.updateUI(); // Ocultará el spinner y mostrará el video
+          this.startLoop();
+          video.removeEventListener('resize', this._onStreamReadyHandler!);
+          video.removeEventListener('loadedmetadata', this._onStreamReadyHandler!);
+          this._onStreamReadyHandler = null;
+        } else {
+          setTimeout(this._onStreamReadyHandler!, 100);
+        }
+      };
+
+      this.els.videoEl.addEventListener('resize', this._onStreamReadyHandler);
+      this.els.videoEl.addEventListener('loadedmetadata', this._onStreamReadyHandler);
+      this.updateUI(); // Mostrar estado de carga inicial
       return true; // Indicate success
     } catch (err) {
       console.error("Camera error:", err);

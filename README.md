@@ -9,13 +9,16 @@
     - Soporte nativo para cámaras Web locales (Webcam).
     - Integración de cámaras IP/WiFi mediante protocolos de transmisión MJPEG.
     - Sistema de vinculación rápida mediante escaneo de códigos QR.
-- **Análisis en Tiempo Real:** Interfaz de baja latencia con procesamiento de fotogramas optimizado mediante Canvas API.
+- **Análisis en Tiempo Real:** Interfaz de baja latencia con procesamiento optimizado y sincronización de hardware para evitar congelamientos.
 - **Gestión de Infracciones:**
     - Historial dinámico con persistencia de sesión.
     - Sistema de alertas sonoras y visuales (Toasts).
+    - **Alertas Bidireccionales:** Notificaciones instantáneas enviadas de vuelta al móvil vinculado mediante canales de datos.
     - Reportes instantáneos a través de **WhatsApp**.
 - **Optimización Móvil:**
     - Interfaz adaptativa (Mobile-First).
+    - **Resolución Inteligente:** Ajuste automático de resolución según cámara (frontal/trasera) para fluidez máxima.
+    - **Monitoreo de Salud de Red:** Detección de pérdida de internet o desconexión del móvil mediante estados ICE de WebRTC.
     - Soporte para gestos táctiles en controles de navegación.
     - Notificaciones tipo Toast diseñadas para interacción con una sola mano.
 - **Capturas Manuales:** Funcionalidad de "Snapshot" para registro instantáneo de la escena.
