@@ -11,7 +11,7 @@ const { idPrefix = '' } = Astro.props;
 const prefix = idPrefix;
 ---
 
-<ppe-detector data-prefix={idPrefix} class="contents">
+<ppe-detector data-prefix={idPrefix} data-id-prefix={idPrefix} class="contents">
   <div id={`${prefix}detector-container`} class="relative w-full h-full flex items-center justify-center bg-black group overflow-hidden border-2 border-transparent transition-colors duration-300">
     <!-- Carga de PeerJS para recibir video -->
     <script is:inline src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
@@ -108,8 +108,8 @@ const prefix = idPrefix;
     prefix: string = ""; // Cambiado de 'private' a 'public' (por defecto)
 
     connectedCallback() {
-      // Robusto: dataset puede fallar en algunos builds; aseguramos leer el atributo directo
-      this.prefix = this.getAttribute('data-prefix') || this.dataset.prefix || "";
+      // Robusto: atributo directo puede variar según el build; probamos ambos
+      this.prefix = this.getAttribute('data-id-prefix') || this.getAttribute('data-prefix') || this.dataset.prefix || "";
       this.init();
     }
 
