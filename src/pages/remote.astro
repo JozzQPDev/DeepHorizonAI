@@ -128,8 +128,8 @@ import Layout from '../layouts/Layout.astro';
                 if (preview) preview.srcObject = stream;
                 if (preview) preview.play().catch(console.error);
                 
-                // Esperar a que la cámara local tenga resolución antes de llamar al monitor
-                const checkPreviewReady = () => {
+                // Esperar a que la cámara del móvil tenga resolución antes de llamar al monitor
+                const checkCameraWarmup = () => {
                   if (preview && preview.videoWidth > 2) {
                     if (setupView) setupView.classList.add('hidden');
                     if (cameraView) {
@@ -138,10 +138,10 @@ import Layout from '../layouts/Layout.astro';
                     }
                     startPeerCall();
                   } else {
-                    setTimeout(checkPreviewReady, 100);
+                    setTimeout(checkCameraWarmup, 100);
                   }
                 };
-                checkPreviewReady();
+                checkCameraWarmup();
 
             } catch (err) {
                 alert("Error: No se pudo acceder a la cámara. Por favor permite el acceso en los ajustes de tu navegador.");

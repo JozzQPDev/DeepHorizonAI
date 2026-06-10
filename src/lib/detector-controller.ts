@@ -118,36 +118,42 @@ export class DetectorController {
   }
 
   public connectRemoteStream(stream: MediaStream) {
-    console.log(`[DetectorController ${this.idPrefix}] Conectando stream remoto: ${stream.id}`);
+    console.log(`[DetectorController ${this.idPrefix}] Conectando stream remoto. Tracks:`, stream.getVideoTracks().length);
     this.stopSource();
 
     const video = this.els.videoEl;
+    
+    // Limpieza agresiva para evitar conflictos de buffer
+    video.pause();
+    video.src = "";
+    video.removeAttribute("src");
+    video.load();
+
     video.muted = true;
     video.playsInline = true;
     video.autoplay = true;
     video.srcObject = stream;
 
-    // Wait for metadata to load before attempting to play
-    video.onloadedmetadata = () => {
-      console.log(`[DetectorController ${this.idPrefix}] Video metadata loaded. Resolution: ${video.videoWidth}x${video.videoHeight}`);
-      video.play().catch(e => {
-        console.warn(`[DetectorController ${this.idPrefix}] Reproducción remota bloqueada por el navegador:`, e);
-      });
-      // Llamar a updateUI después de que el video haya tenido un momento para empezar a renderizar
-      // Esto ayuda a que hasActiveSource() tenga un estado más preciso.
-      setTimeout(() => this.updateUI(), 100); 
+    this.isIpCam = false;
+    this.isCamera = true;
+
+    // Detectar el momento exacto en que la resolución cambia de 2x2 a la real
+    const onStreamReady = () => {
+      if (video.videoWidth > 2) {
+        console.log(`[DetectorController ${this.idPrefix}] Resolución real detectada: ${video.videoWidth}x${video.videoHeight}`);
+        video.play().catch(e => console.warn("Autoplay block:", e));
+        this.updateUI();
+        this.startLoop();
+        video.removeEventListener('resize', onStreamReady);
+        video.removeEventListener('loadedmetadata', onStreamReady);
+      }
     };
 
-    // If metadata is already loaded (e.g., stream is very fast), call onloadedmetadata manually
-    if (video.readyState >= 1) { // HAVE_METADATA
-      if (typeof video.onloadedmetadata === 'function') {
-        (video.onloadedmetadata as any)(new Event('loadedmetadata'));
-      }
-    }
+    video.addEventListener('resize', onStreamReady);
+    video.addEventListener('loadedmetadata', onStreamReady);
     
-    this.isIpCam = false; // Un flujo WebRTC NO es una cámara IP (MJPEG)
-    this.isCamera = true;
-    this.startLoop();
+    // Forzar actualización inicial de UI para ocultar el QR
+    this.updateUI();
   }
 
   private hideQR() {
@@ -244,10 +250,10 @@ export class DetectorController {
 
   private hasActiveSource(): boolean {
     const { videoEl, ipImgEl } = this.els;
-    // Verificamos contra la URL actual de la página para descartar fuentes vacías/reseteadas
-    const hasVideo = !!videoEl.srcObject || (!!videoEl.src && videoEl.src !== window.location.href && videoEl.src !== "about:blank");
+    const currentUrl = window.location.origin + window.location.pathname;
+    // Verificación robusta: ignorar si el src es la propia página (común en errores de video)
+    const hasVideo = !!videoEl.srcObject || (!!videoEl.src && videoEl.src !== currentUrl && videoEl.src !== currentUrl + '/' && videoEl.src !== "about:blank");
     const hasIp = this.isIpCam && !!ipImgEl.src && ipImgEl.src !== window.location.href;
-    console.log(`[DetectorController ${this.idPrefix}] hasActiveSource: hasVideo=${hasVideo} (srcObject=${!!videoEl.srcObject}, src='${videoEl.src}'), hasIp=${hasIp}`);
     return hasVideo || hasIp;
   }
 
@@ -432,15 +438,10 @@ export class DetectorController {
       if (this.els.videoEl.src && this.els.videoEl.src.startsWith('blob:')) {
         URL.revokeObjectURL(this.els.videoEl.src);
       }
-      // Detener tracks del srcObject antes de anularlo
-      if (this.els.videoEl.srcObject) {
-        (this.els.videoEl.srcObject as MediaStream).getTracks().forEach(track => track.stop());
-      }
       this.els.videoEl.srcObject = null;
       this.els.videoEl.removeAttribute("src");
-      this.els.videoEl.src = "about:blank";
-      // No llamar a .load() aquí, ya que puede intentar cargar la URL de la página
-      this.els.videoEl.onloadedmetadata = null; // Clear event listener
+      this.els.videoEl.src = "";
+      this.els.videoEl.load(); // Fuerza el reset del buffer de video
     }
 
     if (this.currentStream) {
