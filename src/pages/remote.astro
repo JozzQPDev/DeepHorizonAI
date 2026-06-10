@@ -31,9 +31,9 @@ import Layout from '../layouts/Layout.astro';
         <p class="text-[10px] text-gray-600 uppercase tracking-widest">Deep Horizon AI Safety Monitor</p>
     </div>
 
-    <div id="camera-view" class="hidden fixed inset-0 bg-black flex flex-col">
+    <div id="camera-view" class="hidden fixed inset-0 bg-black flex-col">
         <video id="preview" autoplay playsinline muted class="w-full h-full object-cover"></video>
-        <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/60"></div>
+        <div class="absolute inset-0 bg-linear-to-t from-black via-transparent to-black/60"></div>
         
         <div class="absolute top-6 left-6 right-6 flex items-center justify-between z-10">
             <!-- Transmisión Status -->
@@ -59,7 +59,6 @@ import Layout from '../layouts/Layout.astro';
             </button>
         </div>
     </div>
-
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const monitorId = urlParams.get('id');
@@ -95,7 +94,10 @@ import Layout from '../layouts/Layout.astro';
                 
                 if (preview) preview.srcObject = stream;
                 if (setupView) setupView.classList.add('hidden');
-                if (cameraView) cameraView.classList.remove('hidden');
+                if (cameraView) {
+                    cameraView.classList.remove('hidden');
+                    cameraView.classList.add('flex');
+                }
 
                 console.log("Cámara activa para monitor:", monitorId);
                 
@@ -107,7 +109,7 @@ import Layout from '../layouts/Layout.astro';
                         console.log("Llamando a:", peerMonitorId);
                         peer.call(peerMonitorId, stream);
                     });
-                    peer.on('error', (err) => alert("Error de conexión: " + err.type));
+                    peer.on('error', (err: any) => console.error("Error en PeerJS móvil:", err));
                 }
                 
             } catch (err) {
@@ -140,5 +142,4 @@ import Layout from '../layouts/Layout.astro';
             }
         };
     </script>
-    </div>
 </Layout>
