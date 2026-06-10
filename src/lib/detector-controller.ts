@@ -81,7 +81,15 @@ export class DetectorController {
     // Normalizar para que coincida con el móvil/QR:
     // móvil llama a `ppe-monitor-<número>` (ej: ppe-monitor-1)
     const slotNumber = (this.idPrefix.match(/\d+/)?.[0]) || this.idPrefix;
-    this.peer = new Peer(`ppe-monitor-${slotNumber}`);
+    const peerId = `ppe-monitor-${slotNumber}`;
+
+    console.log("[DetectorController] initPeer", {
+      idPrefix: this.idPrefix,
+      slotNumber,
+      peerId
+    });
+
+    this.peer = new Peer(peerId);
 
     this.peer.on('call', (call: any) => {
       console.log("[DetectorController] Recibiendo llamada de cámara remota...");
