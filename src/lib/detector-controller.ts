@@ -24,6 +24,7 @@ export class DetectorController {
   private peer: any = null;
   private isCamera = false;
   private currentStream: MediaStream | null = null;
+  private loopRunning = false; // Nueva bandera para controlar el bucle
   private isProcessing = false;
   private isIpCam = false;
   private isScanningQR = false;
@@ -132,10 +133,15 @@ export class DetectorController {
   }
 
   public async startLoop() {
+    if (this.loopRunning) return; // Evitar iniciar múltiples bucles
+    this.loopRunning = true;
+
     const process = async () => {
-      if (this.disposed) return;
+      if (this.disposed || !this.loopRunning) { // Asegurarse de que el bucle se detenga
+        this.loopRunning = false;
+        return;
+      }
       await this.processFrame();
-      console.log(`[DetectorController ${this.idPrefix}] Loop running.`);
       requestAnimationFrame(process);
     };
     requestAnimationFrame(process);
@@ -415,6 +421,7 @@ export class DetectorController {
     this.isIpCam = false;
     this.isCamera = false;
     this.isProcessing = false;
+    this.loopRunning = false; // Detener el bucle cuando la fuente se detiene
     this.isScanningQR = false; // Stop scanning if source is stopped
     this.lastViolationsKey = ""; // Reiniciar clave de banners
 
