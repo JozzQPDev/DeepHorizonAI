@@ -118,13 +118,19 @@ export class DetectorController {
   }
 
   public connectRemoteStream(stream: MediaStream) {
-    console.log(`[DetectorController ${this.idPrefix}] Recibiendo stream remoto: ${stream.id}`);
+    console.log(`[DetectorController ${this.idPrefix}] Conectando stream remoto: ${stream.id}`);
     this.stopSource();
-    this.els.videoEl.srcObject = stream;
-    this.els.videoEl.muted = true; // Imprescindible para autoplay en muchos navegadores
-    this.els.videoEl.playsInline = true;
-    
-    this.els.videoEl.play().catch(e => console.warn(`[DetectorController ${this.idPrefix}] Autoplay prevenido o error:`, e));
+
+    const video = this.els.videoEl;
+    video.muted = true;
+    video.playsInline = true;
+    video.autoplay = true;
+    video.srcObject = stream;
+
+    // Intentar reproducir inmediatamente
+    video.play().catch(e => {
+      console.warn(`[DetectorController ${this.idPrefix}] Reproducción remota bloqueada por el navegador:`, e);
+    });
 
     this.isIpCam = false; // Un flujo WebRTC NO es una cámara IP (MJPEG)
     this.isCamera = true;
