@@ -106,12 +106,10 @@
 
                 console.log("Cámara activa para monitor:", monitorId);
                 
-                // NOTA: Para conectar dispositivos en diferentes redes necesitas un servidor (WebRTC/WebSockets).
-                // Por ahora, enviamos la señal de conexión simulada.
                 bc.postMessage({
                     type: 'remoteConnected',
                     idPrefix: monitorId,
-                    streamUrl: '' // Aquí iría la URL del stream si usaras un relay
+                    streamUrl: '' 
                 });
                 
             } catch (err) {
@@ -127,26 +125,18 @@
 
         if (flipCameraBtn) flipCameraBtn.onclick = async () => {
             if (stream) {
-                stream.getTracks().forEach(track => track.stop()); // Detener el stream actual
+                stream.getTracks().forEach(track => track.stop());
             }
-
             currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
-            
             flipCameraBtn.textContent = currentFacingMode === 'environment' ? 'USAR CÁMARA FRONTAL' : 'USAR CÁMARA TRASERA';
-
             try {
                 stream = await navigator.mediaDevices.getUserMedia({
                     video: { facingMode: currentFacingMode, width: { ideal: 1280 } },
                     audio: false
                 });
-
                 if (preview) preview.srcObject = stream;
-                console.log("Cámara cambiada a:", currentFacingMode);
-
             } catch (err) {
-                alert("Error al cambiar de cámara. Asegúrate de que el dispositivo tenga múltiples cámaras y que los permisos sean correctos.");
-                console.error("Error al cambiar de cámara:", err);
-                // Revertir el facingMode si falla la selección de cámara
+                alert("Error al cambiar de cámara.");
                 currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment'; 
                 flipCameraBtn.textContent = currentFacingMode === 'environment' ? 'USAR CÁMARA FRONTAL' : 'USAR CÁMARA TRASERA';
             }
