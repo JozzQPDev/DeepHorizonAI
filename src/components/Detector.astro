@@ -148,6 +148,7 @@ const prefix = idPrefix;
       const inputIp = this.get<HTMLInputElement>(`#${p}input-ip-url`);
       const scanText = this.get<HTMLElement>(`#${p}scan-text`);
 
+      console.log(`[PPEDetector v1.1] Passing prefix to DetectorController: '${p}'`);
       this.detector = new DetectorController({
         videoEl, ipImgEl, canvasEl, container, cameraSelect, nameInputEl: nameInput,
         emptyState: this.querySelector<HTMLElement>(`#${p}empty-state`),

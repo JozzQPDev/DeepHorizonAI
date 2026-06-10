@@ -50,6 +50,7 @@ export class DetectorController {
   constructor(elements: DetectorElements, idPrefix: string = '') {
     this.els = elements;
     this.idPrefix = idPrefix; // Initialize idPrefix
+    console.log(`[DetectorController v1.1] Constructor received idPrefix: '${this.idPrefix}'`);
     this.initPeer();
     this.initGlobalListeners();
 
@@ -79,18 +80,19 @@ export class DetectorController {
 
     if (this.peer) return; // Evitar doble inicialización
 
-    // Normalización: Si el prefijo es 'det1-', el ID es 'ppe-monitor-1'
-    // Si no tiene números, usamos el prefijo limpio.
-    const idClean = (this.idPrefix.match(/\d+/)?.[0]) || this.idPrefix.replace(/[^a-zA-Z0-9]/g, '');
-    
-    if (!idClean) {
-      console.warn("[DetectorController] idPrefix vacío. Generando ID temporal para evitar colisión.");
+    let finalIdPart = '';
+    if (this.idPrefix) {
+      // Si el prefijo es 'det1-', tomamos '1'. Si es 'det-fallback-random-', tomamos 'fallback-random-'.
+      finalIdPart = (this.idPrefix.match(/\d+/)?.[0]) || this.idPrefix.replace(/[^a-zA-Z0-9]/g, '');
     }
-    
-    const peerId = `ppe-monitor-${idClean || Math.random().toString(36).substring(7)}`;
+
+    if (!finalIdPart) {
+      console.warn("[DetectorController] idPrefix vacío. Generando ID temporal para evitar colisión.");
+      finalIdPart = `fallback-${Math.random().toString(36).substring(7)}`;
+    }
+    const peerId = `ppe-monitor-${finalIdPart}`;
 
     console.log("[DetectorController] Iniciando PeerJS:", peerId);
-
     this.peer = new Peer(peerId);
 
     this.peer.on('call', (call: any) => {
