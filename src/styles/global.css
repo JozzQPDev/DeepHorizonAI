@@ -10,6 +10,7 @@ html, body {
   color: #e2e8f0;
   font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
   overflow-x: hidden;
+  overscroll-behavior: none; /* Evita el rebote de página en móviles */
 }
 
 * {
