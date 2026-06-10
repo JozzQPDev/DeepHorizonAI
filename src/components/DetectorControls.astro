@@ -86,19 +86,24 @@ const p = idPrefix;
   const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
   if (isMobile) {
-    // Función para mostrar los botones de flip en los controles actuales
-    const showFlipButtons = () => {
+    // Escuchar el evento de cambio de modo para mostrar/ocultar dinámicamente
+    window.addEventListener('ppe:toggleMode', (e: any) => {
+      const isCameraActive = e.detail;
+      
       document.querySelectorAll('.det-btn-flip').forEach(btn => {
-        btn.classList.remove('hidden');
-        btn.classList.add('flex');
+        if (isCameraActive) {
+          btn.classList.remove('hidden');
+          btn.classList.add('flex');
+        } else {
+          btn.classList.add('hidden');
+          btn.classList.remove('flex');
+        }
       });
-      document.querySelectorAll('.det-flip-sep').forEach(sep => {
-        sep.classList.remove('hidden');
-      });
-    };
 
-    // Ejecución inicial
-    showFlipButtons();
+      document.querySelectorAll('.det-flip-sep').forEach(sep => {
+        sep.classList.toggle('hidden', !isCameraActive);
+      });
+    });
 
     // Escuchar el evento de clic de forma delegada para soportar controles dinámicos
     document.addEventListener('click', (e) => {

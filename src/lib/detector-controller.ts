@@ -413,6 +413,9 @@ export class DetectorController {
     // Ocultamos el stream IP si no hay fuente o no estamos en modo IP
     ipImgEl.classList.toggle('hidden', !this.isIpCam || !hasSource);
 
+    // Notificar si el modo cámara está activo para controles externos (como el botón Flip)
+    window.dispatchEvent(new CustomEvent('ppe:toggleMode', { detail: this.isCamera }));
+
     if (emptyState) {
       emptyState.style.display = hasSource ? 'none' : 'flex';
     }
