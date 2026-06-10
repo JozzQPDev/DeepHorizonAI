@@ -122,12 +122,6 @@ export class DetectorController {
     this.stopSource();
 
     const video = this.els.videoEl;
-    // Clear any previous srcObject and ensure tracks are stopped
-    if (video.srcObject) {
-      (video.srcObject as MediaStream).getTracks().forEach(track => track.stop());
-      video.srcObject = null;
-    }
-
     video.muted = true;
     video.playsInline = true;
     video.autoplay = true;
@@ -139,7 +133,9 @@ export class DetectorController {
       video.play().catch(e => {
         console.warn(`[DetectorController ${this.idPrefix}] Reproducción remota bloqueada por el navegador:`, e);
       });
-      this.updateUI(); // Update UI again after metadata is loaded
+      // Llamar a updateUI después de que el video haya tenido un momento para empezar a renderizar
+      // Esto ayuda a que hasActiveSource() tenga un estado más preciso.
+      setTimeout(() => this.updateUI(), 100); 
     };
 
     // If metadata is already loaded (e.g., stream is very fast), call onloadedmetadata manually
@@ -148,11 +144,10 @@ export class DetectorController {
         (video.onloadedmetadata as any)(new Event('loadedmetadata'));
       }
     }
-
+    
     this.isIpCam = false; // Un flujo WebRTC NO es una cámara IP (MJPEG)
     this.isCamera = true;
     this.startLoop();
-    // this.updateUI(); // Removed here, called in onloadedmetadata
   }
 
   private hideQR() {
@@ -252,6 +247,7 @@ export class DetectorController {
     // Verificamos contra la URL actual de la página para descartar fuentes vacías/reseteadas
     const hasVideo = !!videoEl.srcObject || (!!videoEl.src && videoEl.src !== window.location.href);
     const hasIp = this.isIpCam && !!ipImgEl.src && ipImgEl.src !== window.location.href;
+    console.log(`[DetectorController ${this.idPrefix}] hasActiveSource: hasVideo=${hasVideo} (srcObject=${!!videoEl.srcObject}, src='${videoEl.src}'), hasIp=${hasIp}`);
     return hasVideo || hasIp;
   }
 
@@ -436,10 +432,15 @@ export class DetectorController {
       if (this.els.videoEl.src && this.els.videoEl.src.startsWith('blob:')) {
         URL.revokeObjectURL(this.els.videoEl.src);
       }
+      // Detener tracks del srcObject antes de anularlo
+      if (this.els.videoEl.srcObject) {
+        (this.els.videoEl.srcObject as MediaStream).getTracks().forEach(track => track.stop());
+      }
       this.els.videoEl.srcObject = null;
       this.els.videoEl.removeAttribute("src");
       this.els.videoEl.src = "";
-      this.els.videoEl.load(); // Fuerza el reset del buffer de video
+      // No llamar a .load() aquí, ya que puede intentar cargar la URL de la página
+      this.els.videoEl.onloadedmetadata = null; // Clear event listener
     }
 
     if (this.currentStream) {
