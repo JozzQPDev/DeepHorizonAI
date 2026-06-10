@@ -116,22 +116,26 @@ export class DetectorController {
   public connectRemoteStream(stream: MediaStream) {
     this.stopSource();
     this.els.videoEl.srcObject = stream;
+    this.els.videoEl.play().catch(e => console.error(`[DetectorController ${this.idPrefix}] Error playing video:`, e)); // Explicitamente reproducir
     this.isIpCam = false; // Un flujo WebRTC NO es una cámara IP (MJPEG)
     this.isCamera = true;
     this.startLoop();
     this.updateUI();
+    console.log(`[DetectorController ${this.idPrefix}] connectRemoteStream completed. Video srcObject set, isCamera=true, isIpCam=false.`);
   }
 
   private hideQR() {
     const overlay = document.getElementById(`${this.idPrefix}qr-overlay`);
     overlay?.classList.add('hidden');
     overlay?.classList.remove('flex');
+    console.log(`[DetectorController ${this.idPrefix}] hideQR called. Overlay hidden: ${overlay?.classList.contains('hidden')}`);
   }
 
   public async startLoop() {
     const process = async () => {
       if (this.disposed) return;
       await this.processFrame();
+      console.log(`[DetectorController ${this.idPrefix}] Loop running.`);
       requestAnimationFrame(process);
     };
     requestAnimationFrame(process);
@@ -530,6 +534,9 @@ export class DetectorController {
     const hasSource = this.hasActiveSource();
 
     // Mostrar resolución si hay una fuente activa
+    console.log(`[DetectorController ${this.idPrefix}] updateUI: hasSource=${hasSource}, isIpCam=${this.isIpCam}, videoEl.hidden=${this.els.videoEl.classList.contains('hidden')}`);
+    console.log(`[DetectorController ${this.idPrefix}] videoEl.srcObject=${!!this.els.videoEl.srcObject}, videoEl.src='${this.els.videoEl.src}'`);
+
     if (resolutionEl) {
       const w = this.isIpCam ? ipImgEl.naturalWidth : videoEl.videoWidth;
       const h = this.isIpCam ? ipImgEl.naturalHeight : videoEl.videoHeight;
@@ -537,6 +544,7 @@ export class DetectorController {
         resolutionEl.textContent = `${w}×${h}`;
         resolutionEl.parentElement?.classList.remove('hidden');
         resolutionEl.parentElement?.classList.add('flex');
+        console.log(`[DetectorController ${this.idPrefix}] Resolution: ${w}x${h}`);
       } else {
         resolutionEl.parentElement?.classList.add('hidden');
         resolutionEl.parentElement?.classList.remove('flex');
@@ -545,11 +553,14 @@ export class DetectorController {
 
     // Ocultamos el video si no tiene fuente activa o si estamos en modo IP (MJPEG)
     videoEl.classList.toggle('hidden', !hasSource || this.isIpCam);
+    console.log(`[DetectorController ${this.idPrefix}] videoEl hidden state after toggle: ${videoEl.classList.contains('hidden')}`);
     // Ocultamos el stream IP si no hay fuente o no estamos en modo IP
     ipImgEl.classList.toggle('hidden', !this.isIpCam || !hasSource);
+    console.log(`[DetectorController ${this.idPrefix}] ipImgEl hidden state after toggle: ${ipImgEl.classList.contains('hidden')}`);
     
     // Notificar si el modo cámara está activo para controles externos (como el botón Flip)
     window.dispatchEvent(new CustomEvent('ppe:toggleMode', { detail: this.isCamera }));
+    console.log(`[DetectorController ${this.idPrefix}] emptyState display: ${emptyState?.style.display}`);
 
     if (emptyState) {
       emptyState.style.display = hasSource ? 'none' : 'flex';
