@@ -108,7 +108,8 @@ const prefix = idPrefix;
     prefix: string = ""; // Cambiado de 'private' a 'public' (por defecto)
 
     connectedCallback() {
-      this.prefix = this.dataset.prefix || "";
+      // Robusto: dataset puede fallar en algunos builds; aseguramos leer el atributo directo
+      this.prefix = this.getAttribute('data-prefix') || this.dataset.prefix || "";
       this.init();
     }
 
