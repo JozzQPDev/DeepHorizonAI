@@ -122,20 +122,37 @@ export class DetectorController {
     this.stopSource();
 
     const video = this.els.videoEl;
+    // Clear any previous srcObject and ensure tracks are stopped
+    if (video.srcObject) {
+      (video.srcObject as MediaStream).getTracks().forEach(track => track.stop());
+      video.srcObject = null;
+    }
+
     video.muted = true;
     video.playsInline = true;
     video.autoplay = true;
     video.srcObject = stream;
 
-    // Intentar reproducir inmediatamente
-    video.play().catch(e => {
-      console.warn(`[DetectorController ${this.idPrefix}] Reproducción remota bloqueada por el navegador:`, e);
-    });
+    // Wait for metadata to load before attempting to play
+    video.onloadedmetadata = () => {
+      console.log(`[DetectorController ${this.idPrefix}] Video metadata loaded. Resolution: ${video.videoWidth}x${video.videoHeight}`);
+      video.play().catch(e => {
+        console.warn(`[DetectorController ${this.idPrefix}] Reproducción remota bloqueada por el navegador:`, e);
+      });
+      this.updateUI(); // Update UI again after metadata is loaded
+    };
+
+    // If metadata is already loaded (e.g., stream is very fast), call onloadedmetadata manually
+    if (video.readyState >= 1) { // HAVE_METADATA
+      if (typeof video.onloadedmetadata === 'function') {
+        (video.onloadedmetadata as any)(new Event('loadedmetadata'));
+      }
+    }
 
     this.isIpCam = false; // Un flujo WebRTC NO es una cámara IP (MJPEG)
     this.isCamera = true;
     this.startLoop();
-    this.updateUI();
+    // this.updateUI(); // Removed here, called in onloadedmetadata
   }
 
   private hideQR() {
