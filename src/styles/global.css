@@ -3,6 +3,7 @@
 html, body {
   margin: 0;
   padding: 0;
+  height: 100vh; /* Fallback para navegadores antiguos */
   height: 100dvh;
   min-height: 100dvh;
   overflow: hidden; /* Mantener overflow hidden para el layout principal */
