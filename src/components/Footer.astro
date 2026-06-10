@@ -1,4 +1,4 @@
-<footer class="shrink-0 flex flex-wrap items-center gap-x-4 gap-y-1 px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] lg:pb-0 lg:h-8 border-t border-white/5 bg-[#0d1117] text-[9px] md:text-[10px] font-mono text-gray-500">
+<footer class="shrink-0 flex items-center justify-between gap-x-4 px-4 py-2 pb-[calc(0.7rem+env(safe-area-inset-bottom))] lg:py-0 lg:h-8 border-t border-white/5 bg-[#0d1117]/95 backdrop-blur-md text-[9px] md:text-[10px] font-mono text-gray-500 z-50">
   <div class="flex gap-4">
     <span>ms: <b id="inf-ms" class="text-gray-300">—</b></span>
     <span class="hidden sm:inline">device: <b id="inf-dev" class="text-gray-300">—</b></span>
@@ -8,8 +8,8 @@
   <!-- Contenedor dinámico para clases detectadas -->
   <div id="live-classes" class="hidden lg:flex items-center gap-1.5 overflow-hidden lg:px-3 h-4 border-l border-white/10"></div>
 
-  <div class="ml-auto flex items-center gap-4">
-    <span class="text-gray-600 uppercase tracking-tighter">Sincronización: <b id="inf-ts" class="text-gray-400 font-normal">—</b></span>
+  <div class="flex items-center gap-4">
+    <span class="hidden xs:inline text-gray-600 uppercase tracking-tighter">Sync: <b id="inf-ts" class="text-gray-400 font-normal">—</b></span>
     <span id="live-clock" class="text-blue-400/80 font-bold border-l border-white/10 pl-4 w-20 text-right">00:00:00</span>
   </div>
 </footer>

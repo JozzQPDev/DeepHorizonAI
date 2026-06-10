@@ -4,14 +4,21 @@ html, body {
   margin: 0;
   padding: 0;
   height: 100vh; /* Fallback para navegadores antiguos */
-  height: 100dvh;
+  height: 100svh; /* Small viewport como base más segura */
+  height: 100dvh; 
   min-height: 100dvh;
-  overflow: hidden; /* Mantener overflow hidden para el layout principal */
+  overflow: hidden;
   background: #0a0c0e;
   color: #e2e8f0;
   font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
   overflow-x: hidden;
   overscroll-behavior: none; /* Evita el rebote de página en móviles */
+}
+
+/* Asegurar que el contenedor principal de Astro (si lo hay) o el body sea flex */
+body {
+  display: flex;
+  flex-direction: column;
 }
 
 * {
