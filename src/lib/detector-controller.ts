@@ -65,16 +65,6 @@ export class DetectorController {
     window.addEventListener('ppe:setFilters', (e: any) => { this.activeFilters = e.detail; });
     window.addEventListener('ppe:flipCamera', () => { if(this.isCamera) this.flipCamera(); });
 
-    // Escuchar vinculación remota vía BroadcastChannel (para pruebas locales/mismo dispositivo)
-    const bc = new BroadcastChannel('ppe_remote_link');
-    bc.onmessage = (e) => {
-      if (e.data.type === 'remoteConnected' && e.data.idPrefix === this.idPrefix) {
-        console.log("[DetectorController] Remote connected via BroadcastChannel:", e.data.idPrefix);
-        this.hideQR();
-        this.connectIpCam(e.data.streamUrl);
-      }
-    };
-
     // Escuchar cuando el móvil se conecte (Simulado vía evento global por ahora)
     // En un sistema real, esto vendría de un WebSocket o polling de API
     window.addEventListener('ppe:remoteConnected', (e: any) => {
@@ -114,6 +104,7 @@ export class DetectorController {
   public connectRemoteStream(stream: MediaStream) {
     this.stopSource();
     this.els.videoEl.srcObject = stream;
+    this.isIpCam = false; // Un flujo WebRTC NO es una cámara IP (MJPEG)
     this.isCamera = true;
     this.startLoop();
     this.updateUI();
