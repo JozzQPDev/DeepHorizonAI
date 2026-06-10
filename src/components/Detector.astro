@@ -160,7 +160,7 @@ const prefix = idPrefix;
         qrOverlayEl: this.querySelector<HTMLElement>(`#${p}qr-overlay`),
         qrContainerEl: this.querySelector<HTMLElement>(`#${p}qr-code-canvas`),
         resolutionEl: this.querySelector<HTMLElement>(`#${p}res-text`),
-      });
+      }, p); // <--- ¡Aquí pasamos el prefijo!
 
       const storageKey = `ppe_name_${p}`;
       const savedName = localStorage.getItem(storageKey);
