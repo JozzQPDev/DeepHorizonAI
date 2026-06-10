@@ -1,6 +1,15 @@
 import { sendFrame, type PredictResult, type Detection } from "./api";
 import { drawDetections, translateClass } from "./detector-utils";
 
+// Define types for history items
+interface HistoryItem {
+  violation?: Detection;
+  thumbnail: string | null;
+  timestamp: string;
+  type: 'violation' | 'snapshot';
+  class_name_display: string;
+}
+
 export interface DetectorElements {
   videoEl: HTMLVideoElement;
   ipImgEl: HTMLImageElement;
@@ -17,13 +26,15 @@ export interface DetectorElements {
   qrOverlayEl?: HTMLElement | null;     // Contenedor del QR
   qrContainerEl?: HTMLElement | null;   // Donde se dibuja el QR
   resolutionEl?: HTMLElement | null;    // Elemento para mostrar la resolución
+  connectionWarningEl?: HTMLElement | null; // Elemento para el aviso de conexión inestable
+  qualityTextEl?: HTMLElement | null;   // Texto de calidad (ms/Mbps)
+  qualityIconEl?: HTMLElement | null;   // Icono de señal
 }
 
 export class DetectorController {
   private els: DetectorElements;
   private peer: any = null;
   private currentCall: any = null; // Guardar referencia a la llamada activa
-  private isCamera = false;
   private currentStream: MediaStream | null = null;
   private loopRunning = false; // Nueva bandera para controlar el bucle
   private isProcessing = false;
@@ -32,17 +43,18 @@ export class DetectorController {
   private lastViolationsKey = "";
   private disposed = false;
   private lastLog = { classes: new Set<string>(), time: 0 };
-  private facingMode: 'user' | 'environment' = 'environment';
-  private historyFilter: string | null = null; // New property for history filter
-  private allHistoryItems: {
-    violation?: Detection; // Optional for snapshots
-    thumbnail: string | null;
-    timestamp: string;
-    type: 'violation' | 'snapshot';
-    class_name_display: string; // Store the class name for filtering/display
-  }[] = []; // New array to store all history items
+  private isCamera = false; // Moved here for better organization
+  private facingMode: 'user' | 'environment' = 'environment'; // Default to environment (rear) camera
+  private historyFilter: string | null = null;
+  private allHistoryItems: HistoryItem[] = [];
   
+  private statsInterval: number | null = null;
+  private lastBytesReceived = 0;
+  private lastStatsTime = 0;
+  private _onStreamReadyHandler: (() => void) | null = null;
+
   private idPrefix: string; // Add idPrefix to the class
+
   // Estado de detección
   public conf = 0.25;
   public iou = 0.45;
@@ -56,8 +68,9 @@ export class DetectorController {
     this.initPeer();
     this.initGlobalListeners();
 
-    // Actualizar resolución cuando carguen los metadatos del video o la imagen IP
-    this.els.videoEl.addEventListener('loadedmetadata', () => this.updateUI());
+    // Estos listeners son para actualizaciones generales de UI, no específicos de la conexión remota
+    // Se añaden una sola vez en el constructor
+    this.els.videoEl.addEventListener('loadedmetadata', () => this.updateUI()); 
     this.els.videoEl.addEventListener('resize', () => this.updateUI());
     this.els.ipImgEl.onload = () => this.updateUI();
   }
@@ -70,6 +83,64 @@ export class DetectorController {
     window.addEventListener(`ppe:flipCamera:${this.idPrefix}`, () => { if(this.isCamera) this.flipCamera(); });
 
   }
+
+  /**
+   * Inicia el monitoreo de estadísticas de WebRTC (Calidad de conexión)
+   */
+  private startStatsMonitoring() {
+    if (this.statsInterval) clearInterval(this.statsInterval);
+    this.lastBytesReceived = 0;
+
+    this.statsInterval = window.setInterval(async () => {
+      if (!this.currentCall?.peerConnection) return;
+
+      try {
+        const stats = await this.currentCall.peerConnection.getStats();
+        let rtt = 0;      // Round Trip Time (Latencia)
+        let bitrate = 0; // Mbps
+
+        stats.forEach((report: any) => {
+          // Latencia desde el par de candidatos seleccionado
+          if (report.type === 'candidate-pair' && report.state === 'succeeded' && report.currentRoundTripTime) {
+            rtt = report.currentRoundTripTime * 1000;
+          }
+          // Bitrate desde el receptor de video
+          if (report.type === 'inbound-rtp' && report.kind === 'video') {
+            if (this.lastBytesReceived > 0) {
+              const bytes = report.bytesReceived - this.lastBytesReceived;
+              const time = (report.timestamp - this.lastStatsTime) / 1000;
+              bitrate = (bytes * 8) / (time * 1000000);
+            }
+            this.lastBytesReceived = report.bytesReceived;
+            this.lastStatsTime = report.timestamp;
+          }
+        });
+
+        if (this.els.qualityTextEl) {
+          this.els.qualityTextEl.textContent = `${Math.round(rtt)}ms · ${bitrate.toFixed(1)}Mbps`;
+          
+          // Cambiar color del icono según latencia
+          if (this.els.qualityIconEl) {
+            const color = rtt < 100 ? 'text-green-400' : (rtt < 300 ? 'text-yellow-400' : 'text-red-500');
+            this.els.qualityIconEl.className = `fa-solid fa-signal text-[8px] ${color} transition-colors`;
+          }
+
+          // Mostrar aviso de "Conexión Inestable" si la latencia es alta
+          if (this.els.connectionWarningEl) {
+            if (rtt > 500) {
+              this.els.connectionWarningEl.textContent = "CONEXIÓN INESTABLE";
+              this.els.connectionWarningEl.classList.remove('hidden');
+            } else {
+              this.els.connectionWarningEl.classList.add('hidden');
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("[DetectorController] Error al obtener stats:", e);
+      }
+    }, 2000);
+  }
+
 
   /**
    * Inicializa la conexión PeerJS para recibir video del móvil
@@ -108,11 +179,22 @@ export class DetectorController {
         this.hideQR();
         this.connectRemoteStream(remoteStream);
       });
+
+      call.on('close', () => {
+        console.log("[DetectorController] Llamada remota cerrada.");
+        this.stopSource();
+      });
+      call.on('error', (err: any) => {
+        console.error("[DetectorController] Error en llamada remota:", err);
+        this.stopSource();
+      });
     });
 
     this.peer.on('error', (err: any) => {
       if (err.type === 'unavailable-id') {
         console.error("[DetectorController] El ID de Peer ya está en uso. Reintenta o refresca.");
+      } else {
+        console.error("[DetectorController] Error en PeerJS:", err);
       }
     });
   }
@@ -125,9 +207,9 @@ export class DetectorController {
     
     // Limpieza agresiva para evitar conflictos de buffer
     video.pause();
-    video.src = "";
     video.removeAttribute("src");
-    video.load();
+    video.src = "about:blank"; // Usar about:blank para una limpieza explícita y segura
+    video.load(); // Forzar la carga de un src vacío para limpiar el buffer
 
     video.muted = true;
     video.playsInline = true;
@@ -138,19 +220,27 @@ export class DetectorController {
     this.isCamera = true;
 
     // Detectar el momento exacto en que la resolución cambia de 2x2 a la real
-    const onStreamReady = () => {
+    // Usamos una función con nombre para poder removerla correctamente
+    this._onStreamReadyHandler = () => {
       if (video.videoWidth > 2) {
         console.log(`[DetectorController ${this.idPrefix}] Resolución real detectada: ${video.videoWidth}x${video.videoHeight}`);
         video.play().catch(e => console.warn("Autoplay block:", e));
         this.updateUI();
         this.startLoop();
-        video.removeEventListener('resize', onStreamReady);
-        video.removeEventListener('loadedmetadata', onStreamReady);
+        this.startStatsMonitoring();
+        // Limpiar los listeners una vez que el stream está listo
+        video.removeEventListener('resize', this._onStreamReadyHandler!);
+        video.removeEventListener('loadedmetadata', this._onStreamReadyHandler!);
+        this._onStreamReadyHandler = null; // Clear reference
+      }
+      else {
+        // Si aún es 2x2, reintentar después de un corto tiempo
+        setTimeout(this._onStreamReadyHandler!, 100);
       }
     };
 
-    video.addEventListener('resize', onStreamReady);
-    video.addEventListener('loadedmetadata', onStreamReady);
+    video.addEventListener('resize', this._onStreamReadyHandler);
+    video.addEventListener('loadedmetadata', this._onStreamReadyHandler);
     
     // Forzar actualización inicial de UI para ocultar el QR
     this.updateUI();
@@ -166,7 +256,7 @@ export class DetectorController {
   public async startLoop() {
     if (this.loopRunning) return; // Evitar iniciar múltiples bucles
     this.loopRunning = true;
-
+    
     const process = async () => {
       if (this.disposed || !this.loopRunning) { // Asegurarse de que el bucle se detenga
         this.loopRunning = false;
@@ -181,10 +271,10 @@ export class DetectorController {
   private async processFrame() {
     const { videoEl, ipImgEl, canvasEl, container } = this.els;
     
-    // Verificación robusta de fuente activa
-    const hasVideo = !!videoEl.srcObject || (videoEl.getAttribute('src') !== null && videoEl.getAttribute('src') !== "");
-    const hasSource = this.isIpCam ? !!ipImgEl.src : hasVideo;
-    
+    const hasSource = this.hasActiveSource();
+
+    // Solo procesar si la fuente está lista y tiene dimensiones válidas
+    // Evitar el stub 2x2 de WebRTC
     let isReady = this.isIpCam 
       ? (ipImgEl.complete && ipImgEl.naturalWidth > 0)
       : (videoEl.videoWidth > 2 && videoEl.readyState >= 2); // Evitar el stub 2x2 de WebRTC
@@ -192,7 +282,7 @@ export class DetectorController {
     const isPaused = this.isIpCam ? false : videoEl.paused;
     const isEnded = this.isIpCam ? false : videoEl.ended;
 
-    if (isReady && !isPaused && !isEnded && !this.isProcessing && hasSource && !this.isScanningQR) { // Don't process frames if scanning QR
+    if (isReady && !isPaused && !isEnded && !this.isProcessing && hasSource && !this.isScanningQR) {
       this.isProcessing = true;
       try {
         const blob = await this.getFrameBlob();
@@ -200,7 +290,7 @@ export class DetectorController {
 
         const result = await sendFrame(blob, { conf: this.conf, iou: this.iou });
         
-        // Si mientras la API respondía se detuvo el controlador, abortamos el renderizado
+        // Si mientras la API respondía se detuvo el controlador o la fuente, abortamos el renderizado
         if (this.disposed || !this.hasActiveSource()) return;
 
         // Feedback visual de violaciones
@@ -224,13 +314,14 @@ export class DetectorController {
         if (canvasEl.width !== sourceWidth || canvasEl.height !== sourceHeight) {
           canvasEl.width = sourceWidth;
           canvasEl.height = sourceHeight;
-          
+          // Forzamos que el canvas se visualice con object-contain para alinearse al video
           // Forzamos que el canvas se visualice con object-contain para alinearse al video
           canvasEl.style.width = "100%";
           canvasEl.style.height = "100%";
           canvasEl.style.objectFit = "contain";
         }
 
+        // Limpiar el canvas antes de redibujar para evitar "fantasmas"
         // Limpiar el canvas antes de redibujar para evitar "fantasmas"
         const ctx = canvasEl.getContext('2d');
         if (ctx) ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
@@ -286,7 +377,7 @@ export class DetectorController {
     canvas.width = this.isIpCam ? this.els.ipImgEl.naturalWidth : this.els.videoEl.videoWidth;
     canvas.height = this.isIpCam ? this.els.ipImgEl.naturalHeight : this.els.videoEl.videoHeight;
     const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
+    if (!ctx || canvas.width === 0 || canvas.height === 0) return null; // Asegurar dimensiones válidas
     ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
     return new Promise(r => canvas.toBlob(r, "image/jpeg", 0.8));
   }
@@ -296,7 +387,6 @@ export class DetectorController {
       this.lastLog = { classes: new Set(), time: 0 };
       return;
     }
-
     const now = Date.now();
     const currentClasses = new Set(violations.map(v => v.class_name));
     const hasNew = [...currentClasses].some(c => !this.lastLog.classes.has(c));
@@ -304,7 +394,7 @@ export class DetectorController {
     if (hasNew || (now - this.lastLog.time > 4000)) {
       const timeStr = new Date().toLocaleTimeString();
 
-      violations.forEach(v => {
+      violations.forEach((v: Detection) => {
         this.allHistoryItems.unshift({ // Add to the beginning of the array
           violation: v,
           thumbnail: thumbnail,
@@ -326,7 +416,7 @@ export class DetectorController {
   // New method to render history based on filter
   private renderHistory() {
     if (!this.els.historyListEl) return;
-
+    
     this.els.historyListEl.innerHTML = ""; // Clear current display
 
     const filteredItems = this.allHistoryItems.filter(item => {
@@ -336,7 +426,7 @@ export class DetectorController {
       return item.class_name_display === this.historyFilter;
     });
 
-    filteredItems.forEach(item => {
+    filteredItems.forEach((item: HistoryItem) => {
       const el = document.createElement("div");
       if (item.type === 'violation' && item.violation) {
         const v = item.violation;
@@ -382,9 +472,9 @@ export class DetectorController {
   }
 
   private filterAndEmit(result: PredictResult) { // This method is fine
-    if (this.activeFilters !== null) {
-      result.detections = result.detections.filter((d: any) => this.activeFilters!.includes(d.class_name));
-      result.violations = result.violations.filter((d: any) => this.activeFilters!.includes(d.class_name));
+    if (this.activeFilters !== null && this.activeFilters.length > 0) { // Check if filters are actually set
+      result.detections = result.detections.filter((d: Detection) => this.activeFilters!.includes(d.class_name));
+      result.violations = result.violations.filter((d: Detection) => this.activeFilters!.includes(d.class_name));
     }
 
     let thumbnail = null;
@@ -393,7 +483,7 @@ export class DetectorController {
       thumbCanvas.width = 400; 
       thumbCanvas.height = 300;
       const tCtx = thumbCanvas.getContext('2d');
-      if (tCtx) {
+      if (tCtx && (this.isIpCam ? this.els.ipImgEl.naturalWidth > 0 : this.els.videoEl.videoWidth > 0)) { // Ensure source has dimensions
         tCtx.drawImage(this.isIpCam ? this.els.ipImgEl : this.els.videoEl, 0, 0, 400, 300);
         drawDetections(result, thumbCanvas);
       }
@@ -453,10 +543,15 @@ export class DetectorController {
       this.currentCall.close();
       this.currentCall = null;
     }
+
+    if (this.statsInterval) {
+      clearInterval(this.statsInterval);
+      this.statsInterval = null;
+    }
     
     this.els.ipImgEl.src = "";
     this.isIpCam = false;
-    this.isCamera = false;
+    this.isCamera = false; // Reset isCamera flag
     this.isProcessing = false;
     this.loopRunning = false; // Detener el bucle cuando la fuente se detiene
     this.isScanningQR = false; // Stop scanning if source is stopped
@@ -468,6 +563,10 @@ export class DetectorController {
 
     this.updateUI();
     this.renderLocalViolations([]); // Limpiar banner al detener
+
+    // Asegurarse de que el overlay QR esté oculto si la fuente se detiene
+    const qrOverlay = document.getElementById(`${this.idPrefix}qr-overlay`);
+    qrOverlay?.classList.add('hidden');
   }
 
   /**
@@ -488,7 +587,7 @@ export class DetectorController {
           ? { deviceId: { exact: deviceId }, width: { ideal: 1280 } }
           : { facingMode: this.facingMode, width: { ideal: 1280 } }
       };
-      this.currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+      this.currentStream = await navigator.mediaDevices.getUserMedia(constraints); // Asignar a currentStream
       this.els.videoEl.srcObject = this.currentStream;
       this.isCamera = true;
       this.startLoop(); // Asegurar que el loop corre
@@ -545,7 +644,7 @@ export class DetectorController {
           canvas.width = this.els.videoEl.videoWidth;
           canvas.height = this.els.videoEl.videoHeight;
           const ctx = canvas.getContext("2d");
-          if (ctx) {
+          if (ctx && canvas.width > 0 && canvas.height > 0) { // Asegurar que el canvas tenga dimensiones válidas
             ctx.drawImage(this.els.videoEl, 0, 0, canvas.width, canvas.height);
             const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             const code = jsQR(imgData.data, imgData.width, imgData.height);
@@ -561,7 +660,7 @@ export class DetectorController {
       return await scan();
     } catch (err) {
       this.isScanningQR = false;
-      if (scanTextEl) scanTextEl.textContent = "ERROR AL ESCANEAR";
+      if (scanTextEl) scanTextEl.textContent = "ERROR AL ESCANEAR"; // Mostrar error en la UI
       return null;
     }
   }
@@ -569,8 +668,8 @@ export class DetectorController {
   public updateUI() {
     const { modeText, liveInd, cameraSelect, emptyState, videoEl, ipImgEl, resolutionEl } = this.els;
     
-    if (modeText) modeText.textContent = this.isCamera ? "CERRAR CÁMARA" : (this.isIpCam ? "CERRAR MÓVIL" : "USAR CÁMARA");
-    
+    if (modeText) modeText.textContent = this.isCamera ? "CERRAR CÁMARA" : (this.isIpCam ? "CERRAR MÓVIL" : "USAR CÁMARA"); // Actualizar texto del botón de modo
+
     liveInd?.classList.toggle('hidden', !this.isCamera);
     liveInd?.classList.toggle('flex', this.isCamera);
     cameraSelect?.classList.toggle('hidden', !this.isCamera);
@@ -578,8 +677,8 @@ export class DetectorController {
     const hasSource = this.hasActiveSource();
 
     // Mostrar resolución si hay una fuente activa
-    console.log(`[DetectorController ${this.idPrefix}] updateUI: hasSource=${hasSource}, isIpCam=${this.isIpCam}, videoEl.hidden=${this.els.videoEl.classList.contains('hidden')}`);
-    console.log(`[DetectorController ${this.idPrefix}] videoEl.srcObject=${!!this.els.videoEl.srcObject}, videoEl.src='${this.els.videoEl.src}'`);
+    console.log(`[DetectorController ${this.idPrefix}] updateUI: hasSource=${hasSource}, isIpCam=${this.isIpCam}, videoEl.hidden=${videoEl.classList.contains('hidden')}`);
+    console.log(`[DetectorController ${this.idPrefix}] videoEl.srcObject=${!!videoEl.srcObject}, videoEl.src='${videoEl.src}'`);
 
     if (resolutionEl) {
       const w = this.isIpCam ? ipImgEl.naturalWidth : videoEl.videoWidth;
@@ -597,7 +696,7 @@ export class DetectorController {
 
     // Ocultamos el video si no tiene fuente activa o si estamos en modo IP (MJPEG)
     videoEl.classList.toggle('hidden', !hasSource || this.isIpCam);
-    // Ocultamos el stream IP si no hay fuente o no estamos en modo IP
+    // Ocultamos el stream IP si no hay fuente o no estamos en modo IP (MJPEG)
     ipImgEl.classList.toggle('hidden', !this.isIpCam || !hasSource);
     
     // Notificar si el modo cámara está activo para controles externos (como el botón Flip)
@@ -607,7 +706,7 @@ export class DetectorController {
       emptyState.style.display = hasSource ? 'none' : 'flex';
     }
 
-    console.log(`[DetectorController ${this.idPrefix}] UI Actualizada: hasSource=${hasSource}, videoHidden=${videoEl.classList.contains('hidden')}, emptyDisplay=${emptyState?.style.display}`);
+    console.log(`[DetectorController ${this.idPrefix}] UI Actualizada: hasSource=${hasSource}, videoHidden=${videoEl.classList.contains('hidden')}, emptyDisplay=${emptyState?.style.display}`); // Log final de estado de UI
   }
 
 
@@ -639,7 +738,7 @@ export class DetectorController {
     canvas.width = source instanceof HTMLVideoElement ? source.videoWidth : source.naturalWidth;
     canvas.height = source instanceof HTMLVideoElement ? source.videoHeight : source.naturalHeight;
     
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d'); // Obtener contexto 2D del canvas
     if (!ctx || canvas.width === 0) return;
 
     ctx.drawImage(source, 0, 0);

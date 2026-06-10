@@ -34,10 +34,20 @@ const prefix = idPrefix;
       </div>
     </div>
 
-    <!-- Info de Resolución -->
-    <div id={`${prefix}res-badge`} class="absolute top-4 right-16 z-50 hidden items-center gap-2 bg-black/40 backdrop-blur-md border border-white/10 rounded-lg px-2 py-1.5 transition-all hover:bg-black/60">
-      <i class="fa-solid fa-expand text-[8px] text-blue-400"></i>
-      <span id={`${prefix}res-text`} class="text-[9px] font-bold text-white/70 font-mono tracking-tighter">0x0</span>
+    <!-- Info de Resolución y Calidad -->
+    <div class="absolute top-4 right-4 z-50 flex flex-col items-end gap-1">
+      <div id={`${prefix}res-badge`} class="hidden items-center gap-3 bg-black/40 backdrop-blur-md border border-white/10 rounded-lg px-2 py-1.5 transition-all hover:bg-black/60">
+        <div class="flex items-center gap-1.5 border-r border-white/10 pr-2">
+          <i class="fa-solid fa-expand text-[8px] text-blue-400"></i>
+          <span id={`${prefix}res-text`} class="text-[9px] font-bold text-white/70 font-mono tracking-tighter">0x0</span>
+        </div>
+        <div id={`${prefix}conn-quality`} class="flex items-center gap-1.5">
+          <i id={`${prefix}quality-icon`} class="fa-solid fa-signal text-[8px] text-green-400"></i>
+          <span id={`${prefix}quality-text`} class="text-[9px] font-bold text-white/50 font-mono tracking-tighter">-- ms</span>
+        </div>
+      </div>
+      <!-- Aviso de conexión inestable -->
+      <div id={`${prefix}conn-warning`} class="hidden text-[8px] font-bold text-red-400 uppercase tracking-widest bg-red-500/10 border border-red-500/30 rounded-lg px-2 py-1.5 animate-pulse"></div>
     </div>
 
     <!-- Banner de Infracciones Local -->
@@ -160,6 +170,9 @@ const prefix = idPrefix;
         qrOverlayEl: this.querySelector<HTMLElement>(`#${p}qr-overlay`),
         qrContainerEl: this.querySelector<HTMLElement>(`#${p}qr-code-canvas`),
         resolutionEl: this.querySelector<HTMLElement>(`#${p}res-text`),
+        connectionWarningEl: this.querySelector<HTMLElement>(`#${p}conn-warning`),
+        qualityTextEl: this.querySelector<HTMLElement>(`#${p}quality-text`),
+        qualityIconEl: this.querySelector<HTMLElement>(`#${p}quality-icon`),
       }, p); // <--- ¡Aquí pasamos el prefijo!
 
       const storageKey = `ppe_name_${p}`;
@@ -298,7 +311,7 @@ const prefix = idPrefix;
           this.detector.stopSource();
           this.detector.setDisposed(false);
           videoEl.src = URL.createObjectURL(file);
-          videoEl.play();
+          videoEl.play().catch(e => console.error(`[Detector ${p}] Error playing local video:`, e));
           this.detector.updateUI();
           this.detector.startLoop();
           window.dispatchEvent(new CustomEvent('ppe:sourceChange'));

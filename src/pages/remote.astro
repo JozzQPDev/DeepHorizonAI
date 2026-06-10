@@ -51,11 +51,11 @@ import Layout from '../layouts/Layout.astro';
 
         <div class="absolute bottom-12 left-0 right-0 px-8 flex flex-col items-center">
             <p class="text-[10px] text-gray-400 uppercase tracking-widest mb-6">Vinculado a: <span class="id-display text-white font-bold"></span></p>
-            <button id="stop-btn" class="w-full max-w-xs py-4 bg-white/5 hover:bg-white/10 text-white rounded-2xl font-bold text-[10px] tracking-widest border border-white/10 backdrop-blur-md transition-all">
-                FINALIZAR SESIÓN
-            </button>
             <button id="flip-camera-btn" class="mt-4 w-full max-w-xs py-4 bg-white/5 hover:bg-white/10 text-white rounded-2xl font-bold text-[10px] tracking-widest border border-white/10 backdrop-blur-md transition-all">
                 USAR CÁMARA FRONTAL
+            </button>
+            <button id="stop-btn" class="w-full max-w-xs py-4 bg-white/5 hover:bg-white/10 text-white rounded-2xl font-bold text-[10px] tracking-widest border border-white/10 backdrop-blur-md transition-all">
+                FINALIZAR SESIÓN
             </button>
         </div>
     </div>
@@ -84,6 +84,10 @@ import Layout from '../layouts/Layout.astro';
         let peerInstance: any = null; // Persistencia de la instancia de Peer
         let currentFacingMode: 'user' | 'environment' = 'environment'; // Iniciar con la cámara trasera por defecto
 
+        // Inicializar peerInstance temprano para manejar posibles flipCamera antes del clic de startBtn
+        peerInstance = new (window as any).Peer(); // ID aleatorio para el móvil
+        peerInstance.on('error', (err: any) => console.error("Error en PeerJS móvil:", err));
+
         // Función centralizada para llamar al monitor
         const startPeerCall = (retryCount = 0) => {
             const MAX_RETRIES = 10; // Try for up to 5 seconds (10 * 500ms)
@@ -103,11 +107,6 @@ import Layout from '../layouts/Layout.astro';
                     }
                 }
 
-                if (!peerInstance) {
-                    peerInstance = new Peer(); // ID aleatorio para el móvil
-                    peerInstance.on('error', (err: any) => console.error("Error en PeerJS móvil:", err));
-                }
-                
                 const callMonitor = () => {
                     console.log("Iniciando transmisión hacia:", peerMonitorId);
                     peerInstance.call(peerMonitorId, stream); // Send the stream
