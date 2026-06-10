@@ -22,6 +22,7 @@ export interface DetectorElements {
 export class DetectorController {
   private els: DetectorElements;
   private peer: any = null;
+  private currentCall: any = null; // Guardar referencia a la llamada activa
   private isCamera = false;
   private currentStream: MediaStream | null = null;
   private loopRunning = false; // Nueva bandera para controlar el bucle
@@ -65,7 +66,8 @@ export class DetectorController {
     window.addEventListener('ppe:setConf', (e: any) => { this.conf = e.detail; });
     window.addEventListener('ppe:setIou', (e: any) => { this.iou = e.detail; });
     window.addEventListener('ppe:setFilters', (e: any) => { this.activeFilters = e.detail; });
-    window.addEventListener('ppe:flipCamera', () => { if(this.isCamera) this.flipCamera(); });
+    // Evento específico para esta instancia de monitor
+    window.addEventListener(`ppe:flipCamera:${this.idPrefix}`, () => { if(this.isCamera) this.flipCamera(); });
 
   }
 
@@ -98,6 +100,7 @@ export class DetectorController {
 
     this.peer.on('call', (call: any) => {
       console.log("[DetectorController] Recibiendo llamada remota en:", peerId);
+      this.currentCall = call;
       call.answer();
 
       call.on('stream', (remoteStream: MediaStream) => {
@@ -415,6 +418,11 @@ export class DetectorController {
     if (this.currentStream) {
       this.currentStream.getTracks().forEach(t => t.stop());
       this.currentStream = null;
+    }
+
+    if (this.currentCall) {
+      this.currentCall.close();
+      this.currentCall = null;
     }
     
     this.els.ipImgEl.src = "";

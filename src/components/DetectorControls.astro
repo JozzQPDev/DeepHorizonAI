@@ -111,7 +111,9 @@ const p = idPrefix;
     document.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
       if (target.closest('.det-btn-flip')) {
-        window.dispatchEvent(new CustomEvent('ppe:flipCamera'));
+        const btn = target.closest('.det-btn-flip');
+        const id = btn?.id.replace('det-btn-flip', '');
+        window.dispatchEvent(new CustomEvent(`ppe:flipCamera:${id}`));
       }
     });
   }
