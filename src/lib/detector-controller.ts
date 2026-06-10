@@ -177,7 +177,6 @@ export class DetectorController {
 
       call.on('stream', (remoteStream: MediaStream) => {
         console.log("[DetectorController] Stream remoto conectado con éxito");
-        this.hideQR();
         this.connectRemoteStream(remoteStream);
       });
 
@@ -202,7 +201,7 @@ export class DetectorController {
 
   public connectRemoteStream(stream: MediaStream) {
     console.log(`[DetectorController ${this.idPrefix}] Conectando stream remoto. Tracks:`, stream.getVideoTracks().length);
-    this.stopSource();
+    this.stopSource(true); // Evitar flicker de la UI al limpiar la fuente anterior
 
     const video = this.els.videoEl;
     
@@ -243,6 +242,7 @@ export class DetectorController {
     video.addEventListener('resize', this._onStreamReadyHandler);
     video.addEventListener('loadedmetadata', this._onStreamReadyHandler);
     
+    this.hideQR(); // Ocultar el QR una vez que el stream está asignado
     // Forzar actualización inicial de UI para ocultar el QR
     this.updateUI();
   }
@@ -521,7 +521,7 @@ export class DetectorController {
     this.renderHistory(); // Re-render to clear display
   }
 
-  public stopSource() {
+  public stopSource(skipUpdate = false) {
     if (this.els.videoEl) {
       this.els.videoEl.pause();
       this.els.videoEl.currentTime = 0; // Reiniciar la posición de reproducción del video
@@ -562,12 +562,14 @@ export class DetectorController {
     const ctx = this.els.canvasEl.getContext('2d');
     if (ctx) ctx.clearRect(0, 0, this.els.canvasEl.width, this.els.canvasEl.height);
 
-    this.updateUI();
-    this.renderLocalViolations([]); // Limpiar banner al detener
+    if (!skipUpdate) {
+      this.updateUI();
+      this.renderLocalViolations([]); // Limpiar banner al detener
+    }
 
     // Asegurarse de que el overlay QR esté oculto si la fuente se detiene
     const qrOverlay = document.getElementById(`${this.idPrefix}qr-overlay`);
-    qrOverlay?.classList.add('hidden');
+    if (!skipUpdate) qrOverlay?.classList.add('hidden');
   }
 
   /**
@@ -697,13 +699,16 @@ export class DetectorController {
       }
     }
 
-    // Controlar la visibilidad del spinner de carga
+    // Ocultamos el video si no tiene fuente activa, si estamos en modo IP (MJPEG)
+    // o si el video aún está cargando (resolución stub de 2x2 típica de WebRTC al inicio)
+    const isVideoLoading = hasSource && !this.isIpCam && videoEl.videoWidth <= 2;
+    videoEl.classList.toggle('hidden', !hasSource || this.isIpCam || isVideoLoading);
+
+    // Controlar la visibilidad del spinner de carga basándose en si el video está conectando
     if (this.els.loadingSpinnerEl) {
-      this.els.loadingSpinnerEl.classList.toggle('hidden', !(hasSource && videoEl.videoWidth <= 2 && !this.isIpCam));
+      this.els.loadingSpinnerEl.classList.toggle('hidden', !isVideoLoading);
     }
 
-    // Ocultamos el video si no tiene fuente activa o si estamos en modo IP (MJPEG)
-    videoEl.classList.toggle('hidden', !hasSource || this.isIpCam);
     // Ocultamos el stream IP si no hay fuente o no estamos en modo IP (MJPEG)
     ipImgEl.classList.toggle('hidden', !this.isIpCam || !hasSource);
     
