@@ -1,46 +1,88 @@
 ---
 import "@fortawesome/fontawesome-free/css/all.min.css";
 ---
-<div id="modal-overlay" class="fixed inset-0 z-[500] items-center justify-center bg-black/95 hidden backdrop-blur-sm p-4 md:p-8 transition-all duration-300">
-  <div class="relative max-w-5xl w-full flex flex-col items-center animate-in zoom-in-95 duration-200">
+<div id="modal-overlay" class="fixed inset-0 z-500 items-center justify-center bg-black/90 hidden backdrop-blur-md p-4 md:p-8 transition-all duration-300">
+  <div class="relative max-w-5xl w-full flex flex-col items-center animate-in zoom-in-95 duration-300">
     
     <!-- Cabecera del Modal -->
-    <div class="w-full max-w-[90vw] flex justify-between items-end mb-3 px-1">
+    <div class="w-full max-w-[90vw] flex justify-between items-end mb-4 px-1">
       <div class="flex flex-col">
-        <span id="modal-class" class="text-red-500 font-mono text-xs font-bold uppercase tracking-widest">Alerta de Seguridad</span>
-        <span id="modal-time" class="text-gray-500 font-mono text-[10px]">--:--:--</span>
+        <span id="modal-class" class="text-red-500 font-black font-mono text-xs uppercase tracking-[0.2em] drop-shadow-[0_0_8px_rgba(239,68,68,0.4)]">Alerta de Seguridad</span>
+        <span id="modal-time" class="text-slate-500 font-mono text-[10px] mt-1">--:--:--</span>
       </div>
-      <div class="flex gap-2">
-        <button id="modal-download" title="Descargar Evidencia" class="p-2 bg-white/5 hover:bg-white/10 rounded-full text-blue-400 transition-colors border border-white/10">
+      <div class="flex gap-3">
+        <button id="modal-report" title="Reportar por WhatsApp" class="btn-report w-10 h-10 flex items-center justify-center bg-green-500/10 hover:bg-green-500/20 rounded-full text-green-500 transition-all border border-green-500/20 active:scale-90">
+          <i class="fa-brands fa-whatsapp text-lg"></i>
+        </button>
+        <button id="modal-download" title="Descargar Evidencia" class="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-full text-blue-400 transition-all border border-white/10 active:scale-90">
           <i class="fa-solid fa-download"></i>
         </button>
-        <button id="modal-close" class="p-2 bg-white/5 hover:bg-white/10 rounded-full text-gray-400 hover:text-white transition-colors border border-white/10">
+        <button id="modal-close" class="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-full text-slate-400 hover:text-white transition-all border border-white/10 active:scale-90">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
     </div>
 
     <!-- Imagen con resplandor sutil de alerta -->
-    <img id="modal-img" src="" class="max-w-[90vw] max-h-[75vh] rounded-lg shadow-2xl border border-white/10 object-contain shadow-red-500/5" />
+    <div class="relative group">
+      <div id="modal-loader" class="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-sm rounded-xl z-0">
+        <div class="w-8 h-8 border-2 border-white/10 border-t-blue-500 rounded-full animate-spin"></div>
+      </div>
+      <img id="modal-img" src="" class="relative z-10 max-w-[90vw] max-h-[70vh] rounded-xl shadow-2xl border border-white/10 object-contain transition-all duration-300 opacity-0 cursor-zoom-in" />
+    </div>
     
-    <div class="mt-6 text-center text-gray-500 text-[9px] font-mono uppercase tracking-[0.2em] opacity-40">
-      Click en cualquier lugar para cerrar
+    <div class="mt-8 text-center text-slate-600 text-[9px] font-mono uppercase tracking-[0.3em] opacity-50 select-none">
+      Toque fuera de la imagen para cerrar visor
     </div>
   </div>
 </div>
 
 <script>
+  import { translateClass } from '../lib/detector-utils';
+
   const overlay = document.getElementById('modal-overlay');
   const modalImg = document.getElementById('modal-img') as HTMLImageElement;
   const modalClass = document.getElementById('modal-class');
   const modalTime = document.getElementById('modal-time');
   const downloadBtn = document.getElementById('modal-download');
   const closeBtn = document.getElementById('modal-close');
+  const zoomBtn = document.getElementById('modal-zoom');
+  const loader = document.getElementById('modal-loader');
+
+  let isZoomed = false;
 
   const closeModal = () => {
     overlay?.classList.replace('flex', 'hidden');
-    if (modalImg) modalImg.src = '';
+    if (modalImg) {
+      modalImg.src = '';
+      modalImg.classList.add('opacity-0');
+      resetZoom();
+    }
+    loader?.classList.remove('hidden');
   };
+
+  const resetZoom = () => {
+    isZoomed = false;
+    if (modalImg) {
+      modalImg.style.transform = 'scale(1)';
+      modalImg.classList.replace('cursor-zoom-out', 'cursor-zoom-in');
+    }
+    const icon = zoomBtn?.querySelector('i');
+    if (icon) icon.className = 'fa-solid fa-magnifying-glass-plus';
+  };
+
+  modalImg?.addEventListener('load', () => { loader?.classList.add('hidden'); modalImg.classList.remove('opacity-0'); });
+
+  zoomBtn?.addEventListener('click', () => {
+    isZoomed = !isZoomed;
+    if (modalImg) {
+      modalImg.style.transform = isZoomed ? 'scale(1.5)' : 'scale(1)';
+      modalImg.classList.toggle('cursor-zoom-in', !isZoomed);
+      modalImg.classList.toggle('cursor-zoom-out', isZoomed);
+    }
+    const icon = zoomBtn.querySelector('i');
+    if (icon) icon.className = isZoomed ? 'fa-solid fa-magnifying-glass-minus' : 'fa-solid fa-magnifying-glass-plus';
+  });
 
   // Cerrar el modal al hacer clic en el fondo
   overlay?.addEventListener('click', (e) => {
@@ -64,7 +106,7 @@ import "@fortawesome/fontawesome-free/css/all.min.css";
     
     if (img && modalImg && overlay) {
       modalImg.src = img.src;
-      if (modalClass) modalClass.textContent = img.dataset.class || 'Alerta detectada';
+      if (modalClass) modalClass.textContent = translateClass(img.dataset.class || 'Alerta detectada');
       if (modalTime) modalTime.textContent = img.dataset.time || '';
       overlay.classList.replace('hidden', 'flex');
     }

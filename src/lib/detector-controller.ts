@@ -26,6 +26,7 @@ export class DetectorController {
   private lastViolationsKey = "";
   private disposed = false;
   private lastLog = { classes: new Set<string>(), time: 0 };
+  private facingMode: 'user' | 'environment' = 'environment';
   private historyFilter: string | null = null; // New property for history filter
   private allHistoryItems: {
     violation?: Detection; // Optional for snapshots
@@ -50,6 +51,7 @@ export class DetectorController {
     window.addEventListener('ppe:setConf', (e: any) => { this.conf = e.detail; });
     window.addEventListener('ppe:setIou', (e: any) => { this.iou = e.detail; });
     window.addEventListener('ppe:setFilters', (e: any) => { this.activeFilters = e.detail; });
+    window.addEventListener('ppe:flipCamera', () => { if(this.isCamera) this.flipCamera(); });
   }
 
   public async startLoop() {
@@ -234,11 +236,8 @@ export class DetectorController {
             </div>
           </div>
           <div class="flex items-center gap-2">
-            <button class="btn-copy p-1.5 text-slate-500 hover:text-blue-400 transition-colors">
-              <i class="fa-regular fa-copy"></i>
-            </button>
             <button class="btn-report p-1.5 text-slate-500 hover:text-green-500 transition-colors" data-class="${v.class_name}" data-time="${item.timestamp}">
-              <i class="fa-brands fa-whatsapp"></i>
+              <i class="fa-brands fa-whatsapp text-sm"></i>
             </button>
           </div>
         `;
@@ -252,8 +251,8 @@ export class DetectorController {
               <span class="text-[9px] text-gray-500">${item.timestamp}</span>
             </div>
           </div>
-          <button class="btn-copy p-1 text-blue-400 hover:text-blue-300">
-            <i class="fa-solid fa-copy"></i>
+          <button class="btn-report p-1 text-blue-400 hover:text-green-500 transition-colors" data-class="Captura Manual" data-time="${item.timestamp}">
+            <i class="fa-brands fa-whatsapp text-sm"></i>
           </button>
         `;
       }
@@ -344,13 +343,25 @@ export class DetectorController {
     this.renderLocalViolations([]); // Limpiar banner al detener
   }
 
+  /**
+   * Alterna entre cámara frontal ('user') y trasera ('environment')
+   */
+  public async flipCamera() {
+    if (!this.isCamera) return;
+    this.facingMode = this.facingMode === 'user' ? 'environment' : 'user';
+    await this.startCamera();
+  }
+
   public async startCamera(deviceId: string | null = null) {
     this.stopSource();
     this.disposed = false; // Resetear flag si se reusa el controlador
     try {
-      this.currentStream = await navigator.mediaDevices.getUserMedia({
-        video: { deviceId: deviceId ? { exact: deviceId } : undefined, width: 1280 }
-      });
+      const constraints: MediaStreamConstraints = {
+        video: deviceId 
+          ? { deviceId: { exact: deviceId }, width: { ideal: 1280 } }
+          : { facingMode: this.facingMode, width: { ideal: 1280 } }
+      };
+      this.currentStream = await navigator.mediaDevices.getUserMedia(constraints);
       this.els.videoEl.srcObject = this.currentStream;
       this.isCamera = true;
       this.startLoop(); // Asegurar que el loop corre

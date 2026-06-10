@@ -28,30 +28,85 @@ export class MonitorController {
       if (btnReport) {
         const { class: cls, time } = btnReport.dataset;
         const phone = (document.getElementById("report-phone") as HTMLInputElement)?.value.replace(/\D/g, '');
-        const label = translateClass(cls || "");
-        const message = `🚨 *ALERTA EPP*\n\n• *Tipo:* ${label}\n• *Hora:* ${time}\n\n_Generado por Deep Horizon._`;
+        const label = translateClass(cls || "unknown");
+        const message = `🚨 *ALERTA DE SEGURIDAD - DEEP HORIZON*\n\n` +
+          `Se ha detectado una infracción de EPP.\n` +
+          `* *Tipo:* ${label}\n` +
+          `* *Hora:* ${time}\n` +
+          `* *Estado:* Requiere revisión inmediata.\n\n` +
+          `Reporte generado automáticamente por *Deep Horizon - EPP Safety Monitor*.`;
+        
+        // Copia automática de la imagen al portapapeles antes de abrir WhatsApp
+        // Si el botón está en el modal, usamos la imagen del modal. Si no, la del item del historial.
+        const img = (btnReport.id === "modal-report") 
+          ? document.getElementById("modal-img") as HTMLImageElement
+          : btnReport.closest(".history-item")?.querySelector("img") as HTMLImageElement;
+          
+        if (img?.src) await this.copyImageToClipboard(img.src);
+
         window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
       }
 
-      // --- COPY IMAGE ---
-      const btnCopy = target.closest(".btn-copy") as HTMLElement;
-      if (btnCopy) {
-        const img = btnCopy.closest(".history-item")?.querySelector("img");
-        if (img?.src) {
-          const canvas = document.createElement('canvas');
-          const tempImg = new Image();
-          tempImg.src = img.src;
-          await tempImg.decode();
-          canvas.width = tempImg.width; canvas.height = tempImg.height;
-          canvas.getContext('2d')?.drawImage(tempImg, 0, 0);
-          canvas.toBlob(blob => {
-            if (blob) navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
-          }, "image/png");
-          btnCopy.classList.add("text-green-400");
-          setTimeout(() => btnCopy.classList.remove("text-green-400"), 2000);
+      // --- IMAGE MODAL ---
+      // Detectar clic en las imágenes de historial con cursor-zoom-in
+      const historyImage = target.closest(".history-item img.cursor-zoom-in") as HTMLImageElement;
+      if (historyImage) {
+        const modal = document.getElementById("modal-overlay");
+        const modalContent = document.getElementById("modal-img") as HTMLImageElement;
+        const modalClass = document.getElementById("modal-class");
+        const modalTime = document.getElementById("modal-time");
+        const modalReportBtn = document.getElementById("modal-report");
+
+        if (modal && modalContent) {
+          modalContent.src = historyImage.src;
+          const cls = translateClass(historyImage.dataset.class || 'Alerta detectada');
+          const time = historyImage.dataset.time || '';
+          
+          if (modalClass) modalClass.textContent = cls;
+          if (modalTime) modalTime.textContent = time;
+          // Sincronizar el botón de reporte del modal con los datos de la imagen actual
+          if (modalReportBtn) { modalReportBtn.dataset.class = cls; modalReportBtn.dataset.time = time; }
+          
+          modal.classList.replace("hidden", "flex");
+        }
+      }
+
+      // --- CERRAR MODAL ---
+      const modal = document.getElementById("modal-overlay");
+      if (modal && modal.classList.contains("flex")) {
+        const isCloseBtn = target.closest("#modal-close");
+        const isBackdrop = target === modal;
+        
+        if (isCloseBtn || isBackdrop) {
+          modal.classList.replace("flex", "hidden");
+          const modalImg = document.getElementById("modal-img") as HTMLImageElement;
+          if (modalImg) modalImg.src = '';
         }
       }
     });
+  }
+
+  /**
+   * Copia una imagen desde una URL (o Base64) al portapapeles del sistema.
+   */
+  private async copyImageToClipboard(imgSrc: string) {
+    try {
+      const tempImg = new Image();
+      tempImg.src = imgSrc;
+      await tempImg.decode();
+
+      const canvas = document.createElement('canvas');
+      canvas.width = tempImg.width;
+      canvas.height = tempImg.height;
+      canvas.getContext('2d')?.drawImage(tempImg, 0, 0);
+
+      const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, "image/png"));
+      if (blob) {
+        await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+      }
+    } catch (err) {
+      console.error("[Monitor] Error al copiar imagen:", err);
+    }
   }
 
   private startLiveClock() {

@@ -19,6 +19,16 @@ const p = idPrefix;
     <div class="w-px h-6 bg-white/10 mx-1"></div>
 
     <button
+      id={`${p}det-btn-flip`}
+      title="Girar cámara"
+      class="det-btn-flip hidden flex-1 md:flex-none items-center justify-center gap-2 px-2 sm:px-3 py-2.5 md:py-2 hover:bg-white/10 text-white text-[10px] font-bold font-mono rounded-xl transition-all border border-transparent active:scale-95 active:bg-white/20"
+    >
+      <i class="fa-solid fa-camera-rotate"></i>
+    </button>
+
+    <div id={`${p}det-flip-sep`} class="det-flip-sep hidden w-px h-6 bg-white/10 mx-1"></div>
+
+    <button
       id={`${p}det-btn-source`}
       title="Cambiar fuente de video"
       class="flex-1 md:flex-none flex items-center justify-center gap-2 px-2 sm:px-3 py-2.5 md:py-2 hover:bg-white/10 text-white text-[10px] font-bold font-mono rounded-xl transition-all border border-transparent active:scale-95 active:bg-white/20"
@@ -70,3 +80,32 @@ const p = idPrefix;
     </select>
   </div>
 </div>
+
+<script>
+  // Lógica para el botón de giro de cámara (Flip Camera)
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  if (isMobile) {
+    // Función para mostrar los botones de flip en los controles actuales
+    const showFlipButtons = () => {
+      document.querySelectorAll('.det-btn-flip').forEach(btn => {
+        btn.classList.remove('hidden');
+        btn.classList.add('flex');
+      });
+      document.querySelectorAll('.det-flip-sep').forEach(sep => {
+        sep.classList.remove('hidden');
+      });
+    };
+
+    // Ejecución inicial
+    showFlipButtons();
+
+    // Escuchar el evento de clic de forma delegada para soportar controles dinámicos
+    document.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('.det-btn-flip')) {
+        window.dispatchEvent(new CustomEvent('ppe:flipCamera'));
+      }
+    });
+  }
+</script>
